@@ -20,21 +20,14 @@ defmodule DataTable.FilterPill do
     <span class={"overflow-hidden m-1 inline rounded-full border pr-2 text-sm font-medium text-gray-900 h-8 " <> if assigns.changeset.valid?, do: "border-gray-200 bg-white", else: "bg-red-50 border-red-500"}>
       <.form :let={f} for={@changeset} as={:filter} id={@id} class="h-full flex items-center" phx-change="change" phx-target={@myself}>
 
-        <!--
-        <%= Phoenix.HTML.Form.select f, :field,
-            Enum.map(@spec.filterable_fields, &{@spec.field_by_id[&1].name, Atom.to_string(&1)}),
-            selected: get_field(@changeset, :field),
-            class: "border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer rounded-full hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 bg-transparent" %>
-        -->
-
         <% selected_field_id = get_field(@changeset, :field) %>
         <select id={@id <> "_field"} name="filter[field]" class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 bg-transparent">
-          <%= for field_id <- @spec.filterable_fields do %>
-            <% name = @spec.field_by_id[field_id].name %>
-            <%= if selected_field_id == Atom.to_string(field_id) do %>
-              <option value={Atom.to_string(field_id)} selected><%= name %></option>
+          <%= for %{col_id: col_id} <- @spec.filterable_columns do %>
+            <% name = @spec.field_by_id[col_id].name %>
+            <%= if selected_field_id == Atom.to_string(col_id) do %>
+              <option value={Atom.to_string(col_id)} selected><%= name %></option>
             <% else %>
-              <option value={Atom.to_string(field_id)}><%= name %></option>
+              <option value={Atom.to_string(col_id)}><%= name %></option>
             <% end %>
           <% end %>
         </select>
@@ -91,7 +84,7 @@ defmodule DataTable.FilterPill do
       {data, @changeset_schema}
       |> Ecto.Changeset.cast(params, [:field, :op, :value])
       |> Ecto.Changeset.validate_required([:field, :op, :value])
-      |> Ecto.Changeset.validate_inclusion(:field, Enum.map(spec.filterable_fields, &Atom.to_string(&1)))
+      |> Ecto.Changeset.validate_inclusion(:field, Enum.map(spec.filterable_columns, &Atom.to_string(&1.col_id)))
 
     field_error = Keyword.get(changeset.errors, :field)
     if field_error == nil do
@@ -120,10 +113,10 @@ defmodule DataTable.FilterPill do
       |> assign(:change_filter, assigns.change_filter)
       |> assign(:id, assigns.id)
 
-    first_filterable = spec.field_by_id[hd(spec.filterable_fields)]
-    first_filter_type = spec.field_types[first_filterable.filter_type]
+    first_filterable = hd(spec.filterable_columns)
+    first_filter_type = spec.filter_types[first_filterable.type]
     first_op = hd(first_filter_type.ops)
-    default_state = %{field: Atom.to_string(first_filterable.id), op: first_op, value: nil}
+    default_state = %{field: Atom.to_string(first_filterable.col_id), op: first_op, value: nil}
 
     state = assigns[:state] || %{}
     changeset = changeset(default_state, socket, state)

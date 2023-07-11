@@ -119,6 +119,7 @@ defmodule DataTable do
             <div class="mt-2 sm:mt-0 sm:ml-4">
               <div class="-m-1 flex flex-wrap items-center">
 
+                <!--
                 <%= for filter_id <- @nav.filter_order do %>
                   <% cancel_filter = fn -> send_update(__MODULE__, id: @id, action: :cancel_filter, filter_id: filter_id) end %>
                   <% change_filter = fn filter, valid -> send_update(__MODULE__, id: @id, action: :change_filter, filter_id: filter_id, filter: filter, valid: valid) end %>
@@ -134,6 +135,30 @@ defmodule DataTable do
                 <span phx-click="add-filter" phx-target={@myself} class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
                   <Heroicons.plus class="w-4 h-4"/>
                 </span>
+                -->
+
+                <!--
+
+                <.form for={@filters} phx-target={@myself} phx-change="filters-change">
+
+                  <.inputs_for :let={filter} field={@form[:filters]}>
+                    <input type="hidden" name="filters[filters_order][]" value={filter.index}/>
+                    <.input type="text" field={filter[:field]}/>
+                    <label>
+                      <input type="checkbox" name="filters[filters_order][]" value={filter.index} class="hidden" />
+                      drop
+                    </label>
+                  </.inputs_for>
+
+                  <label class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
+                    <input type="checkbox" name="filters[filters_order][]" class="hidden"/>
+                    <Heroicons.plus class="w-4 h-4"/>
+                  </label>
+
+                </.form>
+
+                -->
+
               </div>
             </div>
           </div>
@@ -269,12 +294,12 @@ defmodule DataTable do
                 <% end %>
 
                 <%= for field <- @spec.fields, MapSet.member?(@shown_fields, field.id) do %>
-                  <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                  <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6">
                     <%= render_slot(field.slot, result) %>
                   </td>
                 <% end %>
 
-                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm sm:pr-6">
                   <%= if assigns[:row_buttons] do %>
                     <%= render_slot(@row_buttons, result) %>
                   <% end %>
@@ -384,6 +409,13 @@ defmodule DataTable do
     nav = socket.assigns.nav
     source = spec.source
 
+    expanded_columns =
+      if map_size(socket.assigns.expanded) > 0 do
+        MapSet.new(socket.assigns.spec.expanded_fields)
+      else
+        MapSet.new()
+      end
+
     columns =
       socket.assigns.shown_fields
       |> Enum.map(&Enum.find(socket.assigns.spec.fields, fn f -> f.id == &1 end))
@@ -391,6 +423,7 @@ defmodule DataTable do
       |> Enum.concat()
       |> MapSet.new()
       |> MapSet.union(MapSet.new(socket.assigns.spec.always_columns))
+      |> MapSet.union(expanded_columns)
 
     filters =
       nav.filter_order
@@ -438,6 +471,7 @@ defmodule DataTable do
   end
 
   def mount(socket) do
+    socket = assign(socket, :filters, filters_changeset(%DataTable.Filters{}, %{}))
     {:ok, socket}
   end
 
@@ -512,6 +546,8 @@ defmodule DataTable do
   end
 
   def assigns_to_spec(assigns) do
+    source = assigns.source
+
     fields =
       assigns.col
       |> Enum.map(fn slot = %{__slot__: :col, fields: fields, name: name} ->
@@ -537,6 +573,11 @@ defmodule DataTable do
       |> Enum.map(fn rb -> Map.get(rb, :fields, []) end)
       |> Enum.concat()
 
+    expanded_fields =
+        assigns.row_expanded
+        |> Enum.map(fn re -> Map.get(re, :fields, []) end)
+        |> Enum.concat()
+
     field_by_id =
       fields
       |> Enum.map(&{&1.id, &1})
@@ -550,18 +591,23 @@ defmodule DataTable do
       end)
       |> Enum.into(%{})
 
-    filterable_fields =
-      fields
-      |> Enum.filter(&(&1.filter_type != nil))
-      |> Enum.map(&(&1.id))
+    filterable_columns = DataTable.Source.filterable_columns(source)
+    filter_types = DataTable.Source.filter_types(source)
 
-    source = assigns.source
+    #filterable_fields =
+    #  fields
+    #  |> Enum.filter(&(&1.filter_type != nil))
+    #  |> Enum.map(&(&1.id))
+
     %{
       id_field: DataTable.Source.key(source),
       fields: fields,
       default_shown_fields: default_shown_fields,
       always_columns: always_columns,
-      filterable_fields: filterable_fields,
+      #filterable_fields: filterable_fields,
+      filterable_columns: filterable_columns,
+      filter_types: filter_types,
+      expanded_fields: expanded_fields,
       source: source,
 
       field_by_id: field_by_id,
@@ -611,7 +657,11 @@ defmodule DataTable do
       Map.put(socket.assigns.expanded, data_id, true)
     end
 
-    socket = assign(socket, :expanded, expanded)
+    socket =
+      socket
+      |> assign(:expanded, expanded)
+      |> do_query()
+
     {:noreply, socket}
   end
 
@@ -669,4 +719,39 @@ defmodule DataTable do
 
     {:noreply, socket}
   end
+
+
+
+
+  def handle_event("filters-change", params, socket) do
+    filters_changes = params["filters"] || %{}
+
+    filters_changeset =
+      socket.assigns.filters
+      |> filters_changeset(filters_changes)
+
+    IO.inspect(filters_changeset)
+
+    socket = assign(socket, :filters, filters_changeset)
+
+    {:noreply, socket}
+  end
+
+  def filters_changeset(data, attrs) do
+    import Ecto.Changeset
+
+    cast(data, attrs, [])
+    |> cast_embed(:filters,
+      with: &filter_changeset/2,
+      sort_param: :filters_order,
+      drop_param: :filters_delete
+    )
+  end
+
+  def filter_changeset(data, attrs) do
+    import Ecto.Changeset
+
+    cast(data, attrs, [:field, :op, :value])
+  end
+
 end

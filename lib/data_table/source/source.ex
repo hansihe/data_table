@@ -7,6 +7,7 @@ defmodule DataTable.Source do
 
   def query({DataTable.Ecto, {repo, query}}, params) do
     require Ecto.Query
+
     IO.inspect(params)
 
     dyn_select =
@@ -18,14 +19,45 @@ defmodule DataTable.Source do
 
     ecto_query =
       query.base
+      |> Ecto.Query.offset(^(params.page_size * params.page))
+      |> Ecto.Query.limit(^params.page_size)
       |> Ecto.Query.select(^dyn_select)
 
+    count_query =
+      query.base
+      |> Ecto.Query.select(count())
+
     results = repo.all(ecto_query)
-    #count = repo.one(Ecto.Query.select())
+    count = repo.one(count_query)
 
     %{
       results: results,
-      total_results: 0
+      total_results: count
+    }
+  end
+
+  def filterable_columns({DataTable.Ecto, {_repo, query}}) do
+    query.filters
+    |> Enum.map(fn {col_id, type} ->
+      %{
+        col_id: col_id,
+        type: type
+      }
+    end)
+  end
+
+  def filter_types({DataTable.Ecto, {_repo, query}}) do
+    %{
+      string: %{
+        ops: [
+          eq: "equals"
+        ]
+      },
+      integer: %{
+        ops: [
+          eq: "equals"
+        ]
+      }
     }
   end
 
