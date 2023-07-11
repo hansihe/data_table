@@ -6,8 +6,6 @@ defmodule DataTable.Ecto do
     fields: %{}
   ]
 
-  use Spark.Dsl, default_extensions: [extensions: DataTable.Ecto.Dsl]
-
   @doc false
   def do_query(module, in_query, opts) do
     require Ecto.Query
@@ -139,85 +137,6 @@ defmodule DataTable.Ecto do
       fragments
     else
       expand_fragments_set(new_fragments, module)
-    end
-  end
-
-  @doc false
-  @impl Spark.Dsl
-  def handle_before_compile(_opts) do
-    quote bind_quoted: [] do
-      @behaviour DataTable.Source
-
-      {:ok, base_query_fn} = Spark.Dsl.Extension.fetch_opt(__MODULE__, [:ecto_source], :query)
-      @base_query_fn base_query_fn
-
-      {:ok, query_executor_fn} = Spark.Dsl.Extension.fetch_opt(__MODULE__, [:ecto_source], :execute)
-      @query_executor_fn query_executor_fn
-
-      @ecto_source_entities Spark.Dsl.Extension.get_entities(__MODULE__, [:ecto_source])
-
-      @query_fragments @ecto_source_entities
-        |> Enum.filter(fn
-          %DataTable.Ecto.Dsl.QueryFragment{} -> true
-          _ -> false
-        end)
-
-      @query_fragment_order Enum.map(@query_fragments, & &1.name)
-
-      @query_fields Spark.Dsl.Extension.get_persisted(__MODULE__, :ecto_source_fields)
-
-      require Ecto.Query
-
-      # Base query function
-      case :erlang.fun_info(@base_query_fn)[:arity] do
-        0 -> def base_query(_opts), do: @base_query_fn.()
-        1 -> def base_query(opts), do: @base_query_fn.(opts)
-      end
-
-      # Column builders
-      for {_, data} <- @query_fields do
-        def build_column(unquote(data.name)) do
-          dynamic = Ecto.Query.dynamic(unquote(data.binds), unquote(data.expr))
-          data = %{
-            stage: :query,
-            fragment: unquote(data.fragment),
-            dynamic: dynamic,
-            filter: unquote(data.filter)
-          }
-          {:ok, data}
-        end
-      end
-      def build_column(_), do: :error
-
-      # Query fragment order
-      def query_fragment_order, do: @query_fragment_order
-
-      # Query fragment dependencies
-      for %DataTable.Ecto.Dsl.QueryFragment{name: name, depends: depends} <- @query_fragments do
-        def query_fragment_dependencies(unquote(name)), do: {:ok, unquote(Macro.escape(depends))}
-      end
-      def query_fragment_dependencies(_), do: :error
-
-      # Query fragment applicators
-      for %DataTable.Ecto.Dsl.QueryFragment{name: name, query: query_fn} <- @query_fragments do
-        @query_fragment_apply query_fn
-        case :erlang.fun_info(query_fn)[:arity] do
-          1 -> def query_fragment_apply(unquote(name), query, _opts), do: @query_fragment_apply.(query)
-          2 -> def query_fragment_apply(unquote(name), query, opts), do: @query_fragment_apply.(query, opts)
-        end
-      end
-
-      # Query executor
-      case :erlang.fun_info(@query_executor_fn)[:arity] do
-        1 -> def execute_query(query, _opts), do: @query_executor_fn.(query)
-        2 -> def execute_query(query, opts), do: @query_executor_fn.(query, opts)
-      end
-
-      @impl DataTable.Source
-      def query(query, opts \\ []) do
-        DataTable.Ecto.do_query(__MODULE__, query, opts)
-      end
-
     end
   end
 

@@ -24,8 +24,7 @@ defmodule DataTable.MixProject do
       {:phoenix, "~> 1.7"},
       {:phoenix_live_view, "~> 0.19"},
       {:ecto, "~> 3.8"},
-      {:petal_components, "~> 1.2"},
-      {:spark, "~> 1.0"}
+      {:petal_components, "~> 1.2"}
     ]
   end
 end
