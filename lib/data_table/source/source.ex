@@ -17,14 +17,44 @@ defmodule DataTable.Source do
       end)
       |> Enum.into(%{})
 
+    base = Enum.reduce(params.filters, query.base, fn filter, acc ->
+      filter_type = Map.fetch!(query.filters, filter.field)
+      field_dyn = Map.fetch!(query.columns, filter.field)
+
+      value = case filter_type do
+        :integer ->
+          {value, ""} = Integer.parse(filter.value)
+          value
+        :string ->
+          filter.value || ""
+      end
+
+      where_dyn = case {filter_type, filter.op} do
+        {_, :eq} -> Ecto.Query.dynamic(^field_dyn == ^value)
+        {_, :lt} -> Ecto.Query.dynamic(^field_dyn < ^value)
+        {_, :gt} -> Ecto.Query.dynamic(^field_dyn > ^value)
+        {:string, :contains} -> Ecto.Query.dynamic(like(^field_dyn, ^"%#{String.replace(value, "%", "\\%")}%"))
+      end
+
+      Ecto.Query.where(acc, ^where_dyn)
+    end)
+
+    ecto_query = case params.sort do
+      {field, dir} ->
+        field_dyn = Map.fetch!(query.columns, field)
+        Ecto.Query.order_by(base, ^[{dir, field_dyn}])
+      nil ->
+        base
+    end
+
     ecto_query =
-      query.base
+      ecto_query
       |> Ecto.Query.offset(^(params.page_size * params.page))
       |> Ecto.Query.limit(^params.page_size)
       |> Ecto.Query.select(^dyn_select)
 
     count_query =
-      query.base
+      base
       |> Ecto.Query.select(count())
 
     results = repo.all(ecto_query)
@@ -50,12 +80,15 @@ defmodule DataTable.Source do
     %{
       string: %{
         ops: [
-          eq: "equals"
+          eq: "=",
+          contains: "contains"
         ]
       },
       integer: %{
         ops: [
-          eq: "equals"
+          eq: "=",
+          lt: "<",
+          gt: ">"
         ]
       }
     }

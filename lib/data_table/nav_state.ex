@@ -5,8 +5,7 @@ defmodule DataTable.NavState do
 
   defstruct [
     next_filter_id: 0,
-    filter_order: [],
-    filter_state: %{},
+    filters: [],
     sort: nil,
     page: 0,
     expanded: MapSet.new(),
@@ -19,8 +18,7 @@ defmodule DataTable.NavState do
   end
 
   def filters(nav_state) do
-    nav_state.filter_order
-    |> Enum.map(&Map.fetch!(nav_state.filter_state, &1))
+    nav_state.filters
   end
 
   def put_page(nav_state, page) when is_binary(page) do
@@ -34,12 +32,10 @@ defmodule DataTable.NavState do
   def put_sort(nav_state, {field, "asc"}, spec), do: put_sort(nav_state, {field, :asc}, spec)
   def put_sort(nav_state, {field, "desc"}, spec), do: put_sort(nav_state, {field, :desc}, spec)
   def put_sort(nav_state, {field, dir}, spec) when dir in [:asc, :desc] do
-    field = Spec.Table.resolve_id(field, spec)
     %{nav_state | sort: {field, dir}}
   end
 
   def cycle_sort(nav_state, field, spec) do
-    field = Spec.Table.resolve_id(field, spec)
     sort = case nav_state.sort do
       {^field, :asc} -> {field, :desc}
       {^field, :desc} -> nil
@@ -48,27 +44,27 @@ defmodule DataTable.NavState do
     %{nav_state | sort: sort}
   end
 
-  def add_filter(nav_state, _spec) do
-    id = nav_state.next_filter_id
-    nav_state = %{ nav_state |
-      next_filter_id: id + 1,
-      filter_order: nav_state.filter_order ++ [id],
-    }
-    {id, nav_state}
-  end
+  #def add_filter(nav_state, _spec) do
+  #  id = nav_state.next_filter_id
+  #  nav_state = %{ nav_state |
+  #    next_filter_id: id + 1,
+  #    filter_order: nav_state.filter_order ++ [id],
+  #  }
+  #  {id, nav_state}
+  #end
 
-  def set_filter(nav_state, filter_id, filter, _spec) do
-    %{ nav_state |
-      filter_state: Map.put(nav_state.filter_state, filter_id, filter),
-    }
-  end
+  #def set_filter(nav_state, filter_id, filter, _spec) do
+  #  %{ nav_state |
+  #    filter_state: Map.put(nav_state.filter_state, filter_id, filter),
+  #  }
+  #end
 
-  def remove_filter(nav_state, filter_id) do
-    %{ nav_state |
-      filter_order: Enum.reject(nav_state.filter_order, &(&1 == filter_id)),
-      filter_state: Map.delete(nav_state.filter_state, filter_id),
-    }
-  end
+  #def remove_filter(nav_state, filter_id) do
+  #  %{ nav_state |
+  #    filter_order: Enum.reject(nav_state.filter_order, &(&1 == filter_id)),
+  #    filter_state: Map.delete(nav_state.filter_state, filter_id),
+  #  }
+  #end
 
   def encode(nav_state, _spec) do
     filter_params =
@@ -128,8 +124,9 @@ defmodule DataTable.NavState do
       {:page, page}, s -> put_page(s, page)
       {:sort, sort}, s -> put_sort(s, sort, spec)
       {:filter, filter}, s ->
-        {filter_id, s} = add_filter(s, spec)
-        set_filter(s, filter_id, filter, spec)
+        %{ s |
+          filters: s.filters ++ [filter]
+        }
     end)
   end
 

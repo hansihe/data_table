@@ -1,6 +1,8 @@
 defmodule DataTable do
   use Phoenix.LiveComponent
 
+  alias Phoenix.LiveView.JS
+
   alias DataTable.Spec
   alias DataTable.NavState
 
@@ -32,6 +34,11 @@ defmodule DataTable do
     doc: """
     Called when the navigation state of the table has changed.
     If present, the navigation data should be passed back into the `nav` parameter.
+    """
+
+  attr :always_columns, :list,
+    doc: """
+    A list of column ids that will always be loaded.
     """
 
   slot :col, doc: "One `:col` should be sepecified for each potential column in the table" do
@@ -91,6 +98,79 @@ defmodule DataTable do
     """
   end
 
+  defp field_default(spec) do
+    Atom.to_string(List.first(spec.filterable_columns)[:col_id])
+  end
+
+  defp op_options_and_default(_spec, nil), do: {[], ""}
+  defp op_options_and_default(spec, field_value) do
+    atom_field = String.to_existing_atom(field_value)
+    filter_data = Enum.find(spec.filterable_columns, & &1.col_id == atom_field)
+
+    if filter_data == nil do
+      {[], ""}
+    else
+      type_map = spec.filter_types[filter_data[:type]] || %{}
+      ops = type_map[:ops] || []
+      kvs = Enum.map(ops, fn {filter_id, filter_name} -> {filter_name, filter_id} end)
+
+      default_selected = case ops do
+        [] -> ""
+        [{id, _} | _] -> id
+      end
+
+      {kvs, default_selected}
+    end
+  end
+
+  attr :form, :any
+  attr :target, :any
+  attr :spec, :any
+
+  defp filters_form(assigns) do
+    ~H"""
+    <.form for={@form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="flex flex-warp items-center">
+
+      <.inputs_for :let={filter} field={@form[:filters]}>
+        <div class="overflow-hidden m-1 inline-flex items-center rounded-full border pr-2 text-sm font-medium text-gray-900 h-8 border-gray-200 bg-white">
+          <input type="hidden" name="filters[filters_sort][]" value={filter.index}/>
+
+          <% field = filter[:field] %>
+          <% selected_field = field.value || field_default(@spec) %>
+          <select id={field.id} name={field.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 bg-transparent">
+            <%= Phoenix.HTML.Form.options_for_select(
+              Enum.map(@spec.filterable_columns, &{Atom.to_string(&1.col_id), Atom.to_string(&1.col_id)}),
+              selected_field
+            ) %>
+          </select>
+
+          <% field = filter[:op] %>
+          <select id={field.id} name={field.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 text-center bg-transparent">
+            <% {options, default_selected} = op_options_and_default(@spec, selected_field) %>
+            <%= Phoenix.HTML.Form.options_for_select(options, field.value || default_selected) %>
+          </select>
+
+          <% field = filter[:value] %>
+          <input type="text" id={field.id} name={field.name} value={field.value} class="text-sm font-medium border-none pl-2 pr-2 h-full focus:outline-0 bg-transparent"/>
+
+          <label class="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500 cursor-pointer">
+            <input type="checkbox" name="filters[filters_drop][]" value={filter.index} class="hidden" />
+            <svg class="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+              <path stroke-linecap="round" stroke-width="1.5" d="M1 1l6 6m0-6L1 7" />
+            </svg>
+          </label>
+        </div>
+      </.inputs_for>
+
+      <label class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
+        <input type="checkbox" name="filters[filters_sort][]" class="hidden"/>
+        <Heroicons.plus class="w-4 h-4"/>
+      </label>
+
+    </.form>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div>
@@ -118,47 +198,7 @@ defmodule DataTable do
 
             <div class="mt-2 sm:mt-0 sm:ml-4">
               <div class="-m-1 flex flex-wrap items-center">
-
-                <!--
-                <%= for filter_id <- @nav.filter_order do %>
-                  <% cancel_filter = fn -> send_update(__MODULE__, id: @id, action: :cancel_filter, filter_id: filter_id) end %>
-                  <% change_filter = fn filter, valid -> send_update(__MODULE__, id: @id, action: :change_filter, filter_id: filter_id, filter: filter, valid: valid) end %>
-                  <.live_component
-                      id={"filter-#{filter_id}"}
-                      module={DataTable.FilterPill}
-                      spec={@spec}
-                      state={@nav.filter_state[filter_id]}
-                      cancel_filter={cancel_filter}
-                      change_filter={change_filter}/>
-                <% end %>
-
-                <span phx-click="add-filter" phx-target={@myself} class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
-                  <Heroicons.plus class="w-4 h-4"/>
-                </span>
-                -->
-
-                <!--
-
-                <.form for={@filters} phx-target={@myself} phx-change="filters-change">
-
-                  <.inputs_for :let={filter} field={@form[:filters]}>
-                    <input type="hidden" name="filters[filters_order][]" value={filter.index}/>
-                    <.input type="text" field={filter[:field]}/>
-                    <label>
-                      <input type="checkbox" name="filters[filters_order][]" value={filter.index} class="hidden" />
-                      drop
-                    </label>
-                  </.inputs_for>
-
-                  <label class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
-                    <input type="checkbox" name="filters[filters_order][]" class="hidden"/>
-                    <Heroicons.plus class="w-4 h-4"/>
-                  </label>
-
-                </.form>
-
-                -->
-
+                <.filters_form form={@filters_form} target={@myself} spec={@spec}/>
               </div>
             </div>
           </div>
@@ -182,7 +222,7 @@ defmodule DataTable do
 
           <thead class="bg-gray-50">
             <tr>
-              <%= if @spec.selection_actions != nil do %>
+              <%= if @spec.selection_actions != [] do %>
                 <th scope="col" class="w-10 pl-4">
                   <% toggle_state = case @selection do
                     {:include, map} when map_size(map) == 0 -> false
@@ -199,19 +239,24 @@ defmodule DataTable do
               <% end %>
 
               <%= for field <- @spec.fields, MapSet.member?(@shown_fields, field.id) do %>
-                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                  <a href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@myself} phx-value-field={id_to_string(field.id)}>
-                    <%= field.name %>
+                <% sort_field = field.sort_field %>
 
-                    <%= if Map.get(field, :sortable, true) do %>
-                      <% field_id = field.id %>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                  <%= if sort_field == nil do %>
+                    <a class="group inline-flex">
+                      <%= field.name %>
+                    </a>
+                  <% else %>
+                    <a href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@myself} phx-value-field={Atom.to_string(sort_field)}>
+                      <%= field.name %>
+
                       <%= case @nav.sort do %>
-                        <% {^field_id, :asc} -> %>
+                        <% {^sort_field, :asc} -> %>
                           <span class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
                             <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
                           </span>
 
-                        <% {^field_id, :desc} -> %>
+                        <% {^sort_field, :desc} -> %>
                           <span class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
                             <Heroicons.chevron_up mini={true} class="h-5 w-5"/>
                           </span>
@@ -221,8 +266,8 @@ defmodule DataTable do
                             <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
                           </span>
                       <% end %>
-                    <% end %>
-                  </a>
+                    </a>
+                  <% end %>
                 </th>
               <% end %>
 
@@ -268,7 +313,7 @@ defmodule DataTable do
               <% expanded = Map.has_key?(@expanded, "#{id}") %>
               <tr class="border-t border-gray-200 hover:bg-gray-50">
 
-                <%= if @spec.selection_actions != nil do %>
+                <%= if @spec.selection_actions != [] do %>
                   <td class="pl-4">
                     <% toggle_state = case @selection do
                       {:include, %{ ^id => _ }} -> true
@@ -282,7 +327,7 @@ defmodule DataTable do
                 <% end %>
 
                 <%= if @row_expanded do %>
-                  <td class="cursor-pointer" phx-click="toggle-expanded" phx-target={@myself} phx-value-data-id={result[@spec.id_field]}>
+                  <td class="cursor-pointer" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@myself} phx-value-data-id={result[@spec.id_field]}>
                     <% class = if @spec.selection_actions == nil, do: "ml-5", else: "ml-3" %>
 
                     <%= if expanded do %>
@@ -426,17 +471,14 @@ defmodule DataTable do
       |> MapSet.union(expanded_columns)
 
     filters =
-      nav.filter_order
-      |> Enum.map(&(Map.fetch!(nav.filter_state, &1)))
-      |> Enum.map(fn
-        %{field: field} when is_binary(field) ->
-          Map.fetch!(spec.field_id_by_str_id, field)
-
-        %{field: field} when is_atom(field) ->
-          true = Map.has_key?(spec.field_by_id, field)
-          field
+      socket.assigns.filters.filters
+      |> Enum.map(fn f ->
+        %{
+          field: String.to_existing_atom(f.field),
+          op: String.to_existing_atom(f.op),
+          value: f.value
+        }
       end)
-      |> Enum.map(&(%{&1 | field: Spec.Table.resolve_id(&1.field, spec)}))
 
     params = %{
       shown_fields: socket.assigns.shown_fields,
@@ -452,14 +494,14 @@ defmodule DataTable do
       total_results: total_results
     } = DataTable.Source.query(source, params)
 
-    #nav = NavState.encode(nav, spec)
-    #socket =
-    #  if socket.assigns.handle_nav do
-    #    socket.assigns.handle_nav.(nav)
-    #    socket
-    #  else
-    #    assign(socket, :nav, nav)
-    #  end
+    socket =
+      if socket.assigns.handle_nav do
+        encoded_nav = NavState.encode(nav, spec)
+        socket.assigns.handle_nav.(encoded_nav)
+        socket
+      else
+        assign(socket, :nav, nav)
+      end
 
     socket = assign(socket, %{
       results: results,
@@ -471,31 +513,7 @@ defmodule DataTable do
   end
 
   def mount(socket) do
-    socket = assign(socket, :filters, filters_changeset(%DataTable.Filters{}, %{}))
     {:ok, socket}
-  end
-
-  def update(%{action: :cancel_filter, filter_id: filter_id}, socket) do
-    socket =
-      socket
-      |> update(:nav, &NavState.remove_filter(&1, filter_id))
-      |> do_query()
-    {:ok, socket}
-  end
-
-  def update(%{action: :change_filter, filter_id: filter_id, filter: filter, valid: valid}, socket) do
-    spec = socket.assigns.spec
-
-    if valid do
-      socket =
-        socket
-        |> update(:nav, &NavState.set_filter(&1, filter_id, filter, spec))
-        |> do_query()
-
-      {:ok, socket}
-    else
-      {:ok, socket}
-    end
   end
 
   def update(assigns, socket) do
@@ -509,6 +527,10 @@ defmodule DataTable do
       #  nav
       #end
 
+      filters = %DataTable.Filters{}
+      filters_changeset = DataTable.Filters.changeset(filters, spec, %{})
+      filters_form = Phoenix.Component.to_form(filters_changeset)
+
       socket
       |> assign(%{
         id: assigns.id,
@@ -518,6 +540,8 @@ defmodule DataTable do
         shown_fields: MapSet.new(spec.default_shown_fields),
         spec: spec,
         selection: {:include, %{}},
+        filters: filters,
+        filters_form: filters_form,
         first: false
       })
       |> do_query()
@@ -547,6 +571,7 @@ defmodule DataTable do
 
   def assigns_to_spec(assigns) do
     source = assigns.source
+    id_column = DataTable.Source.key(source)
 
     fields =
       assigns.col
@@ -556,6 +581,7 @@ defmodule DataTable do
           name: name,
           columns: fields,
           slot: slot,
+          sort_field: Map.get(slot, :sort_field),
           filter_type: nil
         }
       end)
@@ -572,6 +598,8 @@ defmodule DataTable do
       assigns.row_buttons
       |> Enum.map(fn rb -> Map.get(rb, :fields, []) end)
       |> Enum.concat()
+      |> Enum.concat(assigns[:always_columns] || [])
+      |> Enum.concat([id_column])
 
     expanded_fields =
         assigns.row_expanded
@@ -633,12 +661,19 @@ defmodule DataTable do
       MapSet.put(socket.assigns.shown_fields, field_data.id)
     end
 
-    socket = assign(socket, :shown_fields, shown_fields)
+    socket =
+      socket
+      |> assign(:shown_fields, shown_fields)
+      |> do_query()
+
     {:noreply, socket}
   end
 
-  def handle_event("cycle-sort", %{"field" => field}, socket) do
+  def handle_event("cycle-sort", %{"field" => field_str}, socket) do
     spec = socket.assigns.spec
+
+    # TODO validate further. Not a security issue, but nice to have.
+    field = String.to_existing_atom(field_str)
 
     socket =
       socket
@@ -720,38 +755,36 @@ defmodule DataTable do
     {:noreply, socket}
   end
 
-
-
-
   def handle_event("filters-change", params, socket) do
     filters_changes = params["filters"] || %{}
 
     filters_changeset =
-      socket.assigns.filters
-      |> filters_changeset(filters_changes)
+      %DataTable.Filters{}
+      |> DataTable.Filters.changeset(socket.assigns.spec, filters_changes)
+      |> Map.put(:action, :validate)
 
-    IO.inspect(filters_changeset)
+    {socket, changeset} =
+      case Ecto.Changeset.apply_action(filters_changeset, :validate) do
+        {:ok, filters} ->
+          IO.inspect(filters)
+          {assign(socket, :filters, filters), filters_changeset}
+        {:error, changeset} -> {socket, changeset}
+      end
 
-    socket = assign(socket, :filters, filters_changeset)
+    IO.inspect(changeset)
+
+    socket =
+      socket
+      |> assign(:filters_form, Phoenix.Component.to_form(changeset))
+
+    socket =
+      if changeset.valid? do
+        do_query(socket)
+      else
+        socket
+      end
 
     {:noreply, socket}
-  end
-
-  def filters_changeset(data, attrs) do
-    import Ecto.Changeset
-
-    cast(data, attrs, [])
-    |> cast_embed(:filters,
-      with: &filter_changeset/2,
-      sort_param: :filters_order,
-      drop_param: :filters_delete
-    )
-  end
-
-  def filter_changeset(data, attrs) do
-    import Ecto.Changeset
-
-    cast(data, attrs, [:field, :op, :value])
   end
 
 end
