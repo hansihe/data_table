@@ -98,355 +98,8 @@ defmodule DataTable do
     """
   end
 
-  defp field_default(spec) do
-    Atom.to_string(List.first(spec.filterable_columns)[:col_id])
-  end
-
-  defp op_options_and_default(_spec, nil), do: {[], ""}
-  defp op_options_and_default(spec, field_value) do
-    atom_field = String.to_existing_atom(field_value)
-    filter_data = Enum.find(spec.filterable_columns, & &1.col_id == atom_field)
-
-    if filter_data == nil do
-      {[], ""}
-    else
-      type_map = spec.filter_types[filter_data[:type]] || %{}
-      ops = type_map[:ops] || []
-      kvs = Enum.map(ops, fn {filter_id, filter_name} -> {filter_name, filter_id} end)
-
-      default_selected = case ops do
-        [] -> ""
-        [{id, _} | _] -> id
-      end
-
-      {kvs, default_selected}
-    end
-  end
-
-  attr :form, :any
-  attr :target, :any
-  attr :spec, :any
-
-  defp filters_form(assigns) do
-    ~H"""
-    <.form for={@form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="flex flex-warp items-center">
-
-      <.inputs_for :let={filter} field={@form[:filters]}>
-        <div class="overflow-hidden m-1 inline-flex items-center rounded-full border pr-2 text-sm font-medium text-gray-900 h-8 border-gray-200 bg-white">
-          <input type="hidden" name="filters[filters_sort][]" value={filter.index}/>
-
-          <% field = filter[:field] %>
-          <% selected_field = field.value || field_default(@spec) %>
-          <select id={field.id} name={field.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 bg-transparent">
-            <%= Phoenix.HTML.Form.options_for_select(
-              Enum.map(@spec.filterable_columns, &{Atom.to_string(&1.col_id), Atom.to_string(&1.col_id)}),
-              selected_field
-            ) %>
-          </select>
-
-          <% field = filter[:op] %>
-          <select id={field.id} name={field.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 text-center bg-transparent">
-            <% {options, default_selected} = op_options_and_default(@spec, selected_field) %>
-            <%= Phoenix.HTML.Form.options_for_select(options, field.value || default_selected) %>
-          </select>
-
-          <% field = filter[:value] %>
-          <input type="text" id={field.id} name={field.name} value={field.value} class="text-sm font-medium border-none pl-2 pr-2 h-full focus:outline-0 bg-transparent"/>
-
-          <label class="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500 cursor-pointer">
-            <input type="checkbox" name="filters[filters_drop][]" value={filter.index} class="hidden" />
-            <svg class="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
-              <path stroke-linecap="round" stroke-width="1.5" d="M1 1l6 6m0-6L1 7" />
-            </svg>
-          </label>
-        </div>
-      </.inputs_for>
-
-      <label class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
-        <input type="checkbox" name="filters[filters_sort][]" class="hidden"/>
-        <Heroicons.plus class="w-4 h-4"/>
-      </label>
-
-    </.form>
-    """
-  end
-
   def render(assigns) do
-    ~H"""
-    <div>
-
-      <!-- Filter Header -->
-
-      <div class="sm:flex sm:justify-between">
-        <div class="flex items-center">
-          <%= if @spec.selection_actions != nil and @selection != {:include, %{}} do %>
-            <div>
-              <PetalComponents.Dropdown.dropdown label="Selection" js_lib="live_view_js" placement="right">
-                <%= for {{name, _action_fn}, idx} <- Enum.with_index(@spec.selection_actions) do %>
-                  <PetalComponents.Dropdown.dropdown_menu_item label={name} phx-click="selection-action" phx-value-action-idx={idx} phx-target={@myself}/>
-                <% end %>
-              </PetalComponents.Dropdown.dropdown>
-            </div>
-          <% end %>
-
-          <div class="px-4 py-3 sm:flex sm:items-center">
-            <h3 class="text-sm font-medium text-gray-500">
-              Filters
-            </h3>
-
-            <div aria-hidden="true" class="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"></div>
-
-            <div class="mt-2 sm:mt-0 sm:ml-4">
-              <div class="-m-1 flex flex-wrap items-center">
-                <.filters_form form={@filters_form} target={@myself} spec={@spec}/>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <%= if assigns[:top_right] do %>
-            <%= render_slot(@top_right) %>
-          <% end %>
-        </div>
-      </div>
-
-      <!-- End Filter Header -->
-
-      <!-- Table Container -->
-
-      <.table_container>
-        <table class="min-w-full divide-y divide-gray-300 bg-white">
-
-          <!-- Table Header -->
-
-          <thead class="bg-gray-50">
-            <tr>
-              <%= if @spec.selection_actions != [] do %>
-                <th scope="col" class="w-10 pl-4">
-                  <% toggle_state = case @selection do
-                    {:include, map} when map_size(map) == 0 -> false
-                    {:exclude, map} when map_size(map) == 0 -> true
-                    _ -> :dash
-                  end %>
-
-                  <.checkbox state={toggle_state} on_toggle="toggle-all" phx-target={@myself}/>
-                </th>
-              <% end %>
-
-              <%= if @row_expanded do %>
-                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 w-10 sm:pl-6"></th>
-              <% end %>
-
-              <%= for field <- @spec.fields, MapSet.member?(@shown_fields, field.id) do %>
-                <% sort_field = field.sort_field %>
-
-                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                  <%= if sort_field == nil do %>
-                    <a class="group inline-flex">
-                      <%= field.name %>
-                    </a>
-                  <% else %>
-                    <a href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@myself} phx-value-field={Atom.to_string(sort_field)}>
-                      <%= field.name %>
-
-                      <%= case @nav.sort do %>
-                        <% {^sort_field, :asc} -> %>
-                          <span class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-                            <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-                          </span>
-
-                        <% {^sort_field, :desc} -> %>
-                          <span class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-                            <Heroicons.chevron_up mini={true} class="h-5 w-5"/>
-                          </span>
-
-                        <% _ -> %>
-                          <span class="invisible ml-2 flex-none rounded text-gray-400 group-hover:visible group-focus:visible">
-                            <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-                          </span>
-                      <% end %>
-                    </a>
-                  <% end %>
-                </th>
-              <% end %>
-
-              <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                <span class="sr-only">Buttons</span>
-                <div class="flex justify-end content-center">
-                  <PetalComponents.Dropdown.dropdown js_lib="live_view_js">
-                    <:trigger_element>
-                      <Heroicons.list_bullet mini class="h-4 w-4"/>
-                    </:trigger_element>
-
-                    <div class="p-4 bg-white top-4 right-0 rounded space-y-2">
-                      <%= for field <- @spec.fields do %>
-                        <div class="relative flex items-start cursor-pointer" phx-click="toggle-field" phx-target={@myself} phx-value-field={id_to_string(field.id)}>
-                          <div class="flex h-5 w-5 items-center">
-                            <!--<input id="comments" aria-describedby="comments-description" name="comments" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"> -->
-                            <div class="border border-gray-300 rounded relative w-[18px] h-[18px]">
-                              <%= if MapSet.member?(@shown_fields, field.id) do %>
-                                <Heroicons.check solid={true} class="w-4 text-gray-800"/>
-                              <% end %>
-                            </div>
-                          </div>
-                          <div class="ml-2 text-sm">
-                            <label for="comments" class="font-medium text-gray-700"><%= field.name %></label>
-                          </div>
-                        </div>
-                      <% end %>
-                    </div>
-                  </PetalComponents.Dropdown.dropdown>
-                </div>
-              </th>
-            </tr>
-          </thead>
-
-          <!-- End Table Head -->
-
-          <!-- Table Body -->
-
-          <tbody class="bg-white">
-
-            <%= for result <- @results do %>
-              <% id = result[@spec.id_field] %>
-              <% expanded = Map.has_key?(@expanded, "#{id}") %>
-              <tr class="border-t border-gray-200 hover:bg-gray-50">
-
-                <%= if @spec.selection_actions != [] do %>
-                  <td class="pl-4">
-                    <% toggle_state = case @selection do
-                      {:include, %{ ^id => _ }} -> true
-                      {:include, %{}} -> false
-                      {:exclude, %{ ^id => _ }} -> false
-                      {:exclude, %{}} -> true
-                    end %>
-
-                    <.checkbox state={toggle_state} on_toggle="toggle-row" phx-target={@myself} phx-value-id={result[@spec.id_field]}/>
-                  </td>
-                <% end %>
-
-                <%= if @row_expanded do %>
-                  <td class="cursor-pointer" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@myself} phx-value-data-id={result[@spec.id_field]}>
-                    <% class = if @spec.selection_actions == nil, do: "ml-5", else: "ml-3" %>
-
-                    <%= if expanded do %>
-                      <Heroicons.chevron_up mini={true} class={"h-5 w-5 " <> class}/>
-                    <% else %>
-                      <Heroicons.chevron_down mini={true} class={"h-5 w-5 " <> class}/>
-                    <% end %>
-                  </td>
-                <% end %>
-
-                <%= for field <- @spec.fields, MapSet.member?(@shown_fields, field.id) do %>
-                  <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6">
-                    <%= render_slot(field.slot, result) %>
-                  </td>
-                <% end %>
-
-                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm sm:pr-6">
-                  <%= if assigns[:row_buttons] do %>
-                    <%= render_slot(@row_buttons, result) %>
-                  <% end %>
-                </td>
-              </tr>
-              <%= if expanded do %>
-                <tr>
-                  <td colspan="20">
-                    <%= render_slot(@row_expanded, result) %>
-                  </td>
-                </tr>
-              <% end %>
-            <% end %>
-          </tbody>
-
-          <!-- End Table Body -->
-
-          <!-- Table Footer -->
-
-          <tfoot class="bg-gray-50">
-            <tr>
-              <td colspan="20" class="py-2 px-4">
-                <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                  <div>
-                    <p class="text-sm text-gray-700">
-                      Showing
-                      <span class="font-medium"><%= min(@spec.page_size * @nav.page, @total_results) %></span>
-                      to
-                      <span class="font-medium"><%= min((@spec.page_size * @nav.page + @spec.page_size), @total_results) %></span>
-                      of
-                      <span class="font-medium"><%= @total_results %></span>
-                      results
-                    </p>
-                  </div>
-                  <div>
-                    <% {has_prev, has_next, pages} = generate_pages(@nav.page, @spec.page_size, @total_results) %>
-                    <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                      <%= if has_prev do %>
-                        <a phx-click="change-page" phx-target={@myself} phx-value-page={@nav.page - 1} class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
-                          <span class="sr-only">Previous</span>
-                          <Heroicons.chevron_left mini={true} class="h-5 w-5"/>
-                        </a>
-                      <% else %>
-                        <a class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500">
-                          <span class="sr-only">Previous</span>
-                          <Heroicons.chevron_left mini={true} class="h-5 w-5"/>
-                        </a>
-                      <% end %>
-
-                      <%= for page <- pages do %>
-                        <%= case page do %>
-                          <% {:page, page_num, true} -> %>
-                            <a phx-click="change-page" phx-target={@myself} phx-value-page={page_num} aria-current="page" class="relative z-10 inline-flex items-center border border-indigo-500 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:cursor-pointer focus:z-20"><%= page_num + 1 %></a>
-                          <% {:page, page_num, false} -> %>
-                            <a phx-click="change-page" phx-target={@myself} phx-value-page={page_num} class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20"><%= page_num + 1 %></a>
-                        <% end %>
-                      <% end %>
-
-                      <%= if has_next do %>
-                        <a phx-click="change-page" phx-target={@myself} phx-value-page={@nav.page + 1} class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
-                          <span class="sr-only">Next</span>
-                          <Heroicons.chevron_right mini={true} class="h-5 w-5"/>
-                        </a>
-                      <% else %>
-                        <a class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500">
-                          <span class="sr-only">Next</span>
-                          <Heroicons.chevron_right mini={true} class="h-5 w-5"/>
-                        </a>
-                      <% end %>
-                    </nav>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </tfoot>
-
-          <!-- End Table Footer -->
-
-        </table>
-      </.table_container>
-
-    </div>
-    """
-  end
-
-  def generate_pages(page, page_size, total_results) do
-    max_page = div(total_results + (page_size - 1), page_size) - 1
-
-    middle_pages =
-      (page - 3)..(page + 3)
-      |> Enum.filter(&(&1 >= 0))
-      |> Enum.filter(&(&1 <= max_page))
-
-    pages = Enum.map(middle_pages, fn i ->
-      {:page, i, i == page}
-    end)
-
-    {
-      page > 0,
-      page < max_page,
-      pages,
-    }
+    DataTable.TailwindTheme.top(assigns)
   end
 
   def do_query(socket) do
@@ -512,6 +165,112 @@ defmodule DataTable do
     socket
   end
 
+  def assign_render_data(socket) do
+    assigns = socket.assigns
+    nav = assigns.nav
+    spec = assigns.spec
+
+    page_idx = nav.page
+    page_size = spec.page_size
+    total_results = assigns.total_results
+    max_page = div(total_results + (page_size - 1), page_size) - 1
+
+    data = %{
+      # Selection
+      can_select: spec.selection_actions != nil and
+        spec.selection_actions != [],
+      has_selection: assigns.selection != {:include, %{}},
+      header_selection: case assigns.selection do
+        {:include, map} when map_size(map) == 0 -> false
+        {:exclude, map} when map_size(map) == 0 -> true
+        _ -> :dash
+      end,
+      selection: assigns.selection,
+      selection_actions: Enum.map(spec.selection_actions, fn {{name, _action_fn}, idx} ->
+        %{
+          label: name,
+          action_idx: idx
+        }
+      end),
+
+      filters_form: assigns.filters_form,
+      filters_default_field: Atom.to_string(List.first(spec.filterable_columns)[:col_id]),
+      filters_fields:
+        spec.filterable_columns
+        |> Enum.map(fn col ->
+          %{
+            name: Atom.to_string(col.col_id),
+            id_str: Atom.to_string(col.col_id),
+          }
+        end),
+
+      header_fields:
+        spec.fields
+        |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
+        |> Enum.map(fn field ->
+          sort_field = field.sort_field
+          %{
+            name: field.name,
+            can_sort: sort_field != nil,
+            sort: case nav.sort do
+              {^sort_field, :asc} -> :asc
+              {^sort_field, :desc} -> :desc
+              _ -> nil
+            end,
+            sort_toggle_id: Atom.to_string(field.sort_field),
+          }
+        end),
+
+      togglable_fields: Enum.map(spec.fields, fn field ->
+        {field.name, id_to_string(field.id), MapSet.member?(assigns.shown_fields, field.id)}
+      end),
+
+      rows: Enum.map(assigns.results, fn row ->
+        id = row[spec.id_field]
+        %{
+          id: id,
+          data: row,
+          expanded: Map.has_key?(assigns.expanded, "#{id}"),
+          selected: case assigns.selection do
+            {:include, %{^id => _}} -> true
+            {:include, %{}} -> false
+            {:exclude, %{^id => _}} -> false
+            {:exclude, %{}} -> true
+          end
+        }
+      end),
+
+      # Pagination
+      page_idx: page_idx,
+      page_start_item: min(page_size * page_idx, total_results),
+      page_end_item: min(page_size * page_idx + page_size, total_results),
+      page_size: page_size,
+      total_results: total_results,
+      page_max: max_page,
+      has_prev: page_idx > 0,
+      has_next: page_idx < max_page,
+
+      # Slots
+      top_right_slot: assigns.top_right,
+      can_expand: assigns.row_expanded != nil
+        and assigns.row_expanded != [],
+      row_expanded_slot: assigns.row_expanded,
+      has_row_buttons: assigns.row_buttons != nil
+        and assigns.row_buttons != [],
+      row_buttons_slot: assigns.row_buttons,
+      field_slots:
+        spec.fields
+        |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
+        |> Enum.map(& &1.slot),
+
+      target: assigns.myself,
+      # TODO remove
+      spec: assigns.spec
+    }
+
+    assign(socket, data)
+  end
+
   def mount(socket) do
     {:ok, socket}
   end
@@ -565,6 +324,8 @@ defmodule DataTable do
     else
       socket
     end
+
+    socket = assign_render_data(socket)
 
     {:ok, socket}
   end
@@ -665,11 +426,12 @@ defmodule DataTable do
       socket
       |> assign(:shown_fields, shown_fields)
       |> do_query()
+      |> assign_render_data()
 
     {:noreply, socket}
   end
 
-  def handle_event("cycle-sort", %{"field" => field_str}, socket) do
+  def handle_event("cycle-sort", %{"sort-toggle-id" => field_str}, socket) do
     spec = socket.assigns.spec
 
     # TODO validate further. Not a security issue, but nice to have.
@@ -679,6 +441,7 @@ defmodule DataTable do
       socket
       |> update(:nav, &NavState.cycle_sort(&1, field, spec))
       |> do_query()
+      |> assign_render_data()
 
     {:noreply, socket}
   end
@@ -696,6 +459,7 @@ defmodule DataTable do
       socket
       |> assign(:expanded, expanded)
       |> do_query()
+      |> assign_render_data()
 
     {:noreply, socket}
   end
@@ -705,6 +469,8 @@ defmodule DataTable do
       socket
       |> update(:nav, &NavState.put_page(&1, page))
       |> do_query()
+      |> assign_render_data()
+
     {:noreply, socket}
   end
 
@@ -714,7 +480,11 @@ defmodule DataTable do
 
     {_filter_id, nav} = NavState.add_filter(nav, spec)
 
-    socket = assign(socket, :nav, nav)
+    socket =
+      socket
+      |> assign(:nav, nav)
+      |> assign_render_data()
+
     {:noreply, socket}
   end
 
@@ -725,7 +495,10 @@ defmodule DataTable do
       _ -> {:exclude, %{}}
     end
 
-    socket = assign(socket, :selection, selection)
+    socket =
+      socket
+      |> assign(:selection, selection)
+      |> assign_render_data()
 
     {:noreply, socket}
   end
@@ -740,7 +513,10 @@ defmodule DataTable do
       {:exclude, map} -> {:exclude, Map.put(map, row_id, nil)}
     end
 
-    socket = assign(socket, :selection, selection)
+    socket =
+      socket
+      |> assign(:selection, selection)
+      |> assign_render_data()
 
     {:noreply, socket}
   end
@@ -752,6 +528,7 @@ defmodule DataTable do
     selection = socket.assigns.selection
     action_fn.(selection)
 
+    socket = assign_render_data(socket)
     {:noreply, socket}
   end
 
@@ -771,8 +548,6 @@ defmodule DataTable do
         {:error, changeset} -> {socket, changeset}
       end
 
-    IO.inspect(changeset)
-
     socket =
       socket
       |> assign(:filters_form, Phoenix.Component.to_form(changeset))
@@ -783,6 +558,8 @@ defmodule DataTable do
       else
         socket
       end
+
+    socket = assign_render_data(socket)
 
     {:noreply, socket}
   end
