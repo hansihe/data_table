@@ -8,8 +8,6 @@ defmodule DataTable.Source do
   def query({DataTable.Ecto, {repo, query}}, params) do
     require Ecto.Query
 
-    IO.inspect(params)
-
     dyn_select =
       params.shown_columns
       |> Enum.map(fn col_id ->
@@ -27,6 +25,8 @@ defmodule DataTable.Source do
           value
         :string ->
           filter.value || ""
+        :boolean ->
+          filter.value == "true"
       end
 
       where_dyn = case {filter_type, filter.op} do
@@ -89,6 +89,11 @@ defmodule DataTable.Source do
           eq: "=",
           lt: "<",
           gt: ">"
+        ]
+      },
+      boolean: %{
+        ops: [
+          eq: "="
         ]
       }
     }
