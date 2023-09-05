@@ -53,9 +53,15 @@ defmodule DataTable.Source do
       |> Ecto.Query.limit(^params.page_size)
       |> Ecto.Query.select(^dyn_select)
 
-    count_query =
-      base
-      |> Ecto.Query.select(count())
+    # we use a subquery to avoid the count query from being affected
+    # by any group_by clauses in the base query. If the base query has a group_by clause,
+    # we want to return the number of groups, not the count of each group.
+    import Ecto.Query
+
+    count_query = from(
+      subquery in subquery(base),
+      select: count(subquery)
+    )
 
     results = repo.all(ecto_query)
     count = repo.one(count_query)
