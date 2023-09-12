@@ -4,7 +4,8 @@ defmodule DataTable.Ecto.Query do
     base: nil,
     columns: %{},
     key: nil,
-    filters: []
+    filters: [],
+    default_order_by: nil
   ]
 
   defp unescape_literal(ast, env) do
@@ -50,18 +51,22 @@ defmodule DataTable.Ecto.Query do
 
     columns = Keyword.fetch!(kw, :columns)
     key = Keyword.fetch!(kw, :key)
+    default_order_by = Keyword.get(kw, :default_order_by)
 
     filters =
       Keyword.fetch!(kw, :filters)
       |> unescape_literal(__CALLER__)
 
-    kw = Keyword.drop(kw, [:columns, :key, :filters])
+    kw = Keyword.drop(kw, [:columns, :key, :filters, :default_order_by])
 
     if Keyword.has_key?(kw, :select) do
       Ecto.Query.Builder.error!("`:select` key is not supported in `DataTable.Ecto.from/2`. Use `:columns` instead.")
     end
     if Keyword.has_key?(kw, :select_merge) do
       Ecto.Query.Builder.error!("`:select_merge` key is not supported in `DataTable.Ecto.from/2`. Use `:columns` instead.")
+    end
+    if Keyword.has_key?(kw, :order_by) do
+      Ecto.Query.Builder.error!("`:order_by` key will override table sorts when used in a DataTable query. Use `:default_order_by` instead.")
     end
 
     # Binds from base from
@@ -86,6 +91,7 @@ defmodule DataTable.Ecto.Query do
       |> Enum.map(fn var -> {var, [], nil} end)
 
     columns_dyn_map = process_columns(binds_expr, columns)
+    order_by = process_order_by(binds_expr, default_order_by)
 
     quote do
       require Ecto.Query
@@ -93,7 +99,8 @@ defmodule DataTable.Ecto.Query do
         base: Ecto.Query.from(unquote(expr), unquote(kw)),
         columns: unquote(columns_dyn_map),
         key: unquote(key),
-        filters: unquote(Macro.escape(filters))
+        filters: unquote(Macro.escape(filters)),
+        default_order_by: unquote(order_by)
       }
     end
   end
@@ -167,6 +174,46 @@ defmodule DataTable.Ecto.Query do
     end)
 
     {:%{}, [], columns_dyn_list}
+  end
+
+  @valid_orderings [:asc, :asc_nulls_last, :asc_nulls_first, :desc, :desc_nulls_last, :desc_nulls_first]
+
+  defp process_order_by(_binds, nil) do
+    quote do
+      []
+    end
+  end
+  defp process_order_by(_binds, {:^, _opts, [inner]}) do
+    inner
+  end
+  defp process_order_by(_binds, expr) when is_atom(expr) do
+    quote do
+      [{:asc, unquote(expr)}]
+    end
+  end
+  defp process_order_by(binds, expr) when is_list(expr) do
+    Enum.map(expr, fn
+      {dir, field} when dir in @valid_orderings and is_atom(field) ->
+        Macro.escape({dir, field})
+
+      {dir, val} when dir in @valid_orderings ->
+        quote do
+          {unquote(dir), Ecto.Query.dynamic(unquote(binds), unquote(val))}
+        end
+
+      field when is_atom(field) ->
+        Macro.escape({:asc, field})
+
+      val ->
+        quote do
+          {:asc, Ecto.Query.dynamic(unquote(binds), unquote(val))}
+        end
+    end)
+  end
+  defp process_order_by(binds, expr) do
+    quote do
+      [{:asc, Ecto.Query.dynamic(unquote(binds), unquote(expr))}]
+    end
   end
 
 end

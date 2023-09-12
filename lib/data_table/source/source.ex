@@ -47,6 +47,13 @@ defmodule DataTable.Source do
         base
     end
 
+    ecto_query = case query.default_order_by do
+      [] ->
+        ecto_query
+      order_by ->
+        Ecto.Query.order_by(ecto_query, ^order_by)
+    end
+
     ecto_query =
       ecto_query
       |> Ecto.Query.offset(^(params.page_size * params.page))
