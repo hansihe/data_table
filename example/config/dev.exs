@@ -27,7 +27,8 @@ config :example, ExampleWeb.Endpoint,
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
-  ]
+  ],
+  reloadable_apps: [:example, :data_table]
 
 # ## SSL Support
 #
@@ -57,7 +58,8 @@ config :example, ExampleWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"lib/example_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/example_web/(controllers|live|components)/.*(ex|heex)$",
+      ~r"../lib/data_table/(tailwind_theme|components|filters).ex"
     ]
   ]
 

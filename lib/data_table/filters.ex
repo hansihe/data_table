@@ -10,6 +10,22 @@ defmodule DataTable.Filters do
     end
   end
 
+  def changeset2(data, attrs) do
+    data
+    |> cast(attrs, [])
+    |> cast_embed(
+      :filters,
+      with: &filter_changeset2(&1, &2),
+      sort_param: :filters_sort,
+      drop_param: :filters_drop
+    )
+  end
+
+  def filter_changeset2(data, attrs) do
+    data
+    |> cast(attrs, [:field, :op, :value])
+  end
+
   def changeset(data, spec, attrs) do
     data
     |> cast(attrs, [])

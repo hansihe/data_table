@@ -57,8 +57,7 @@ defmodule DataTable do
     attr :filter_field, :atom,
       doc: """
       If present, cells will have a filter shortcut. The filter shortcut
-      will apply a filter for the specified field. Defaults to the first
-      field in `fields`.
+      will apply a filter for the specified field.
       """
     # default: :eq
     attr :filter_field_op, :atom,
@@ -208,6 +207,8 @@ defmodule DataTable do
         spec.fields
         |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
         |> Enum.map(fn field ->
+          filter_field = field.filter_field
+          filter_field_op = field.filter_field_op
           sort_field = field.sort_field
           %{
             name: field.name,
@@ -218,6 +219,9 @@ defmodule DataTable do
               _ -> nil
             end,
             sort_toggle_id: Atom.to_string(field.sort_field),
+            can_filter: filter_field != nil,
+            filter_field_id: Atom.to_string(filter_field),
+            filter_field_op_id: Atom.to_string(filter_field_op)
           }
         end),
 
@@ -343,7 +347,8 @@ defmodule DataTable do
           columns: fields,
           slot: slot,
           sort_field: Map.get(slot, :sort_field),
-          filter_type: nil
+          filter_field: Map.get(slot, :filter_field),
+          filter_field_op: Map.get(slot, :filter_field_op)
         }
       end)
 

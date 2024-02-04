@@ -12,6 +12,12 @@ defmodule DataTable.MixProject do
     ]
   end
 
+  def application do
+    [
+      mod: {DataTable.Application, []}
+    ]
+  end
+
   def package do
     [
       description: "Flexible data table component for LiveView",
@@ -37,7 +43,10 @@ defmodule DataTable.MixProject do
       {:ecto, "~> 3.8"},
       {:petal_components, "~> 1.2"},
 
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+
+      {:plug_cowboy, "~> 2.5", only: :dev_server},
+      {:jason, "~> 1.2", only: :dev_server}
     ]
   end
 end

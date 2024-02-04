@@ -12,7 +12,7 @@ defmodule ExampleWeb.ArticlesLive do
         <%= row.id %>
       </:col>
 
-      <:col name="Title" fields={[:title]} sort_field={:title} :let={row}>
+      <:col name="Title" fields={[:title]} sort_field={:title} filter_field={:title} filter_field_op={:contains} :let={row}>
         <%= row.title %>
       </:col>
 

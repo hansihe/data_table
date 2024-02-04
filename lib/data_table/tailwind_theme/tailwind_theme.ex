@@ -3,6 +3,72 @@ defmodule DataTable.TailwindTheme do
   alias Phoenix.LiveView.JS
   import DataTable.Components
 
+  attr :size, :atom, default: :small, values: [:small, :medium, :large]
+  slot :icon
+  slot :inner_block, required: true
+  def btn_basic(assigns) do
+    ~H"""
+    <% classes = [
+      "flex cursor-pointer",
+      "rounded-lg hover:bg-indigo-50",
+      "text-zinc-800 hover:text-indigo-600",
+      (if @size == :small, do: "text-sm px-2 py-1 space-x-1"),
+      (if @size == :small and @icon != nil, do: "pl-1.5"),
+      (if @size == :medium, do: ""),
+      (if @size == :medium and @icon == nil, do: ""),
+      (if @size == :large, do: ""),
+      (if @size == :large and @icon == nil, do: "")
+    ] %>
+
+    <div tabindex="0" class={classes}>
+      <%= render_slot(@icon) %>
+      <div><%= render_slot(@inner_block) %></div>
+    </div>
+    """
+  end
+
+  slot :inner_block, required: true
+  def btn_icon(assigns) do
+    ~H"""
+    <div tabindex="0" class={[
+      "cursor-pointer",
+      "flex justify-center",
+      "rounded-full w-7 h-7",
+      "text-zinc-800",
+      "hover:text-indigo-600 hover:bg-indigo-50"
+    ]}>
+      <%= render_slot(@inner_block) %>
+    </div>
+    """
+  end
+
+  slot :inner_block, required: true
+  def select(assigns) do
+    ~H"""
+    <select class={[
+      "text-sm pl-2 py-1 pr-10",
+      "outline-1 !border-0 !ring-0 rounded-lg",
+      "bg-zinc-100 text-zinc-800 shadow-indigo-600 outline-indigo-600",
+      "focus:text-indigo-600 focus:shadow-[0_0_2px_0px] focus:outline",
+    ]}>
+      <%= render_slot(@inner_block) %>
+    </select>
+    """
+  end
+
+  def text_input(assigns) do
+    ~H"""
+    <input
+      type="text"
+      class={[
+        "text-sm pl-2 py-1",
+        "outline-1 !border-0 !ring-0 rounded-lg",
+        "bg-zinc-100 text-zinc-800 shadow-indigo-600 outline-indigo-600",
+        "focus:shadow-[0_0_2px_0px] focus:outline"
+      ]}/>
+    """
+  end
+
   def generate_pages(page, page_size, total_results) do
     max_page = div(total_results + (page_size - 1), page_size) - 1
 
@@ -66,7 +132,6 @@ defmodule DataTable.TailwindTheme do
                   total_results={@total_results}
                   page_idx={@page_idx}
                   page_size={@page_size}
-                  total_results={@total_results}
                   target={@target}
                   has_prev={@has_prev}
                   has_next={@has_next}/>
@@ -94,24 +159,7 @@ defmodule DataTable.TailwindTheme do
           </PetalComponents.Dropdown.dropdown>
         </div>
 
-        <div class="px-4 py-3 sm:flex sm:items-center">
-          <h3 class="text-sm font-medium text-gray-500">
-            Filters
-          </h3>
-
-          <div aria-hidden="true" class="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"></div>
-
-          <div class="mt-2 sm:mt-0 sm:ml-4">
-            <div class="-m-1 flex flex-wrap items-center">
-              <.filters_form
-                form={@filters_form}
-                target={@target}
-                spec={@spec}
-                filters_fields={@filters_fields}
-                filters_default_field={@filters_default_field}/>
-            </div>
-          </div>
-        </div>
+        <.filters_form2/>
       </div>
 
       <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -134,25 +182,31 @@ defmodule DataTable.TailwindTheme do
         <th :if={@can_expand} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 w-10 sm:pl-6"></th>
 
         <th :for={field <- @header_fields} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-          <a :if={not field.can_sort} class="group inline-flex">
-            <%= field.name %>
-          </a>
+          <div class="flex items-center justify-between">
+            <a :if={not field.can_sort} class="group inline-flex">
+              <%= field.name %>
+            </a>
 
-          <a :if={field.can_sort} href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@target} phx-value-sort-toggle-id={field.sort_toggle_id}>
-            <%= field.name %>
+            <a :if={field.can_sort} href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@target} phx-value-sort-toggle-id={field.sort_toggle_id}>
+              <%= field.name %>
 
-            <span :if={field.sort == :asc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-              <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-            </span>
+              <span :if={field.sort == :asc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
+                <Heroicons.chevron_down mini class="h-5 w-5"/>
+              </span>
 
-            <span :if={field.sort == :desc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-              <Heroicons.chevron_up mini={true} class="h-5 w-5"/>
-            </span>
+              <span :if={field.sort == :desc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
+                <Heroicons.chevron_up mini class="h-5 w-5"/>
+              </span>
 
-            <span :if={field.sort == nil} class="invisible ml-2 flex-none rounded text-gray-400 group-hover:visible group-focus:visible">
-              <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-            </span>
-          </a>
+              <span :if={field.sort == nil} class="invisible ml-2 flex-none rounded text-gray-400 group-hover:visible group-focus:visible">
+                <Heroicons.chevron_down mini class="h-5 w-5"/>
+              </span>
+            </a>
+
+            <a :if={field.can_filter} class="text-gray-400" href="#" phx-click="add-field-filter" phx-target={@target} phx-value-filter-id={field.filter_field_id}>
+              <Heroicons.funnel class="h-4 w-4"/>
+            </a>
+          </div>
         </th>
 
         <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 w-0 whitespace-nowrap !border-0">
@@ -306,6 +360,7 @@ defmodule DataTable.TailwindTheme do
   attr :target, :any
   attr :spec, :any
 
+  attr :filters_fields, :any
   attr :filters_default_field, :any
   attr :filterable_fields, :any
 
@@ -313,8 +368,9 @@ defmodule DataTable.TailwindTheme do
     ~H"""
     <.form for={@form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="flex flex-warp items-center">
 
-      <.inputs_for :let={filter} field={@form[:filters]}>
+      <.inputs_for :let={filter} field={@form[:filters]} skip_hidden={true}>
         <div class="overflow-hidden m-1 inline-flex items-center rounded-full border pr-2 text-sm font-medium text-gray-900 h-8 border-gray-200 bg-white">
+          <!-- TODO hidden fields -->
           <input type="hidden" name="filters[filters_sort][]" value={filter.index}/>
 
           <% field = filter[:field] %>
@@ -351,6 +407,12 @@ defmodule DataTable.TailwindTheme do
       </label>
 
     </.form>
+    """
+  end
+
+  def filters_form2(assigns) do
+    ~H"""
+    <.live_component module={DataTable.TailwindTheme.FiltersFormComponent} id={:filters_form}/>
     """
   end
 
