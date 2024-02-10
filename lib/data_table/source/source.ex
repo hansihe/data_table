@@ -92,12 +92,23 @@ defmodule DataTable.Source do
   def filter_types({DataTable.Ecto, {_repo, query}}) do
     %{
       string: %{
+        validate: fn _op, _val -> true end,
         ops: [
-          eq: "=",
-          contains: "contains"
+          contains: "contains",
+          eq: "="
         ]
       },
       integer: %{
+        validate: fn
+          _op, nil ->
+            false
+
+          _op, val ->
+            case Integer.parse(val) do
+              {_, ""} -> true
+              _ -> false
+            end
+        end,
         ops: [
           eq: "=",
           lt: "<",
@@ -105,6 +116,13 @@ defmodule DataTable.Source do
         ]
       },
       boolean: %{
+        validate: fn _op, val ->
+          case val do
+            "true" -> true
+            "false" -> true
+            _ -> false
+          end
+        end,
         ops: [
           eq: "="
         ]

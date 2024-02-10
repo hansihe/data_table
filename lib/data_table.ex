@@ -1,13 +1,6 @@
 defmodule DataTable do
   use Phoenix.LiveComponent
 
-  alias Phoenix.LiveView.JS
-
-  alias DataTable.Spec
-  alias DataTable.NavState
-
-  import DataTable.Components
-
   def id_to_string(id) when is_binary(id), do: id
 
   attr :id, :any,
@@ -98,28 +91,27 @@ defmodule DataTable do
   end
 
   def render(assigns) do
-    DataTable.TailwindTheme.top(assigns)
+    DataTable.Theme.Tailwind.top(assigns)
   end
 
   def do_query(socket) do
-    spec = socket.assigns.spec
-    nav = socket.assigns.nav
-    source = spec.source
+    static = socket.assigns.static
+    source = static.source
 
     expanded_columns =
       if map_size(socket.assigns.expanded) > 0 do
-        MapSet.new(socket.assigns.spec.expanded_fields)
+        MapSet.new(static.expanded_fields)
       else
         MapSet.new()
       end
 
     columns =
       socket.assigns.shown_fields
-      |> Enum.map(&Enum.find(socket.assigns.spec.fields, fn f -> f.id == &1 end))
+      |> Enum.map(&Enum.find(static.fields, fn f -> f.id == &1 end))
       |> Enum.map(& &1.columns)
       |> Enum.concat()
       |> MapSet.new()
-      |> MapSet.union(MapSet.new(socket.assigns.spec.always_columns))
+      |> MapSet.union(MapSet.new(static.always_columns))
       |> MapSet.union(expanded_columns)
 
     filters =
@@ -135,9 +127,9 @@ defmodule DataTable do
     params = %{
       shown_fields: socket.assigns.shown_fields,
       shown_columns: columns,
-      sort: nav.sort,
-      page: nav.page,
-      page_size: spec.page_size,
+      sort: socket.assigns.sort,
+      page: socket.assigns.page,
+      page_size: socket.assigns.page_size,
       filters: filters
     }
 
@@ -146,14 +138,15 @@ defmodule DataTable do
       total_results: total_results
     } = DataTable.Source.query(source, params)
 
-    socket =
-      if socket.assigns.handle_nav do
-        encoded_nav = NavState.encode(nav, spec)
-        socket.assigns.handle_nav.(encoded_nav)
-        socket
-      else
-        assign(socket, :nav, nav)
-      end
+    #socket =
+    #  if socket.assigns.handle_nav do
+    #    if nav != socket.assigns.nav do
+    #      socket.assigns.handle_nav.(nav)
+    #    end
+    #    socket
+    #  else
+    #    assign(socket, :nav, nav)
+    #  end
 
     socket = assign(socket, %{
       results: results,
@@ -164,38 +157,101 @@ defmodule DataTable do
     socket
   end
 
-  def assign_render_data(socket) do
-    assigns = socket.assigns
-    nav = assigns.nav
-    spec = assigns.spec
+  def assign_static_data(socket, comp_assigns) do
+    source = comp_assigns.source
 
-    page_idx = nav.page
-    page_size = spec.page_size
-    total_results = assigns.total_results
-    max_page = div(total_results + (page_size - 1), page_size) - 1
+    selection_actions = [] # TODO
 
-    data = %{
+    filterable_columns = DataTable.Source.filterable_columns(source)
+    filter_types = DataTable.Source.filter_types(source)
+    id_field = DataTable.Source.key(source)
+
+    fields =
+      comp_assigns.col
+      |> Enum.map(fn slot = %{__slot__: :col, fields: fields, name: name} ->
+        %{
+          id: name,
+          name: name,
+          columns: fields,
+          slot: slot,
+          sort_field: Map.get(slot, :sort_field),
+          filter_field: Map.get(slot, :filter_field),
+          filter_field_op: Map.get(slot, :filter_field_op)
+        }
+      end)
+
+    static = %{
+      source: source,
+
       # Selection
-      can_select: spec.selection_actions != nil and
-        spec.selection_actions != [],
-      has_selection: assigns.selection != {:include, %{}},
-      header_selection: case assigns.selection do
-        {:include, map} when map_size(map) == 0 -> false
-        {:exclude, map} when map_size(map) == 0 -> true
-        _ -> :dash
-      end,
-      selection: assigns.selection,
-      selection_actions: Enum.map(spec.selection_actions, fn {{name, _action_fn}, idx} ->
+      can_select: selection_actions != nil and
+        selection_actions != [],
+      selection_actions: Enum.map(selection_actions, fn {{name, _action_fn}, idx} ->
         %{
           label: name,
           action_idx: idx
         }
       end),
 
-      filters_form: assigns.filters_form,
-      filters_default_field: Atom.to_string(List.first(spec.filterable_columns)[:col_id]),
+      # Fields
+      fields: fields,
+      id_field: id_field,
+      default_shown_fields:
+        comp_assigns.col
+        |> Enum.map(fn
+          %{visible: false} -> []
+          %{name: name} -> [name]
+        end)
+        |> Enum.concat(),
+      field_id_by_str_id:
+        fields
+        |> Enum.map(fn
+          %{id: id} when is_atom(id) -> {Atom.to_string(id), id}
+          %{id: id} when is_binary(id) -> {id, id}
+        end)
+        |> Enum.into(%{}),
+      field_by_id:
+        fields
+        |> Enum.map(&{&1.id, &1})
+        |> Enum.into(%{}),
+
+      always_columns:
+        comp_assigns.row_buttons
+        |> Enum.map(fn rb -> Map.get(rb, :fields, []) end)
+        |> Enum.concat()
+        |> Enum.concat(comp_assigns[:always_columns] || [])
+        |> Enum.concat([id_field]),
+
+      # Sort
+      default_sort: nil,
+
+      # Filters
+      filter_column_order: Enum.map(filterable_columns, fn data ->
+        Atom.to_string(data.col_id)
+      end),
+      filter_columns: Enum.into(Enum.map(filterable_columns, fn data ->
+        id_str = Atom.to_string(data.col_id)
+        out = %{
+          id: id_str,
+          name: id_str,
+          type_name: data.type,
+          validate: filter_types[data.type].validate,
+          ops_order: Enum.map(filter_types[data.type].ops, fn {id, _name} ->
+            Atom.to_string(id)
+          end),
+          ops: Enum.into(Enum.map(filter_types[data.type].ops, fn {id, name} ->
+            id_str = Atom.to_string(id)
+            out = %{
+              id: id_str,
+              name: name
+            }
+            {id_str, out}
+          end), %{})
+        }
+        {id_str, out}
+      end), %{}),
       filters_fields:
-        spec.filterable_columns
+        filterable_columns
         |> Enum.map(fn col ->
           %{
             name: Atom.to_string(col.col_id),
@@ -203,8 +259,41 @@ defmodule DataTable do
           }
         end),
 
+      # Slots
+      can_expand: comp_assigns.row_expanded != nil
+        and comp_assigns.row_expanded != [],
+      row_expanded_slot: comp_assigns.row_expanded,
+      has_row_buttons: comp_assigns.row_buttons != nil
+        and comp_assigns.row_buttons != [],
+      row_buttons_slot: comp_assigns.row_buttons,
+    }
+
+    assign(socket, :static, static)
+  end
+
+  def assign_base_render_data(socket) do
+    assigns = socket.assigns
+    static = assigns.static
+
+    page_idx = assigns.page
+    page_size = 20 # spec.page_size
+
+    assign(socket, %{
+      # Selection
+      has_selection: assigns.selection != {:include, %{}},
+      header_selection: case assigns.selection do
+        {:include, map} when map_size(map) == 0 -> false
+        {:exclude, map} when map_size(map) == 0 -> true
+        _ -> :dash
+      end,
+      selection: assigns.selection,
+
+      # Filters
+      # [...]
+
+      # Fields
       header_fields:
-        spec.fields
+        static.fields
         |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
         |> Enum.map(fn field ->
           filter_field = field.filter_field
@@ -213,7 +302,7 @@ defmodule DataTable do
           %{
             name: field.name,
             can_sort: sort_field != nil,
-            sort: case nav.sort do
+            sort: case assigns.sort do
               {^sort_field, :asc} -> :asc
               {^sort_field, :desc} -> :desc
               _ -> nil
@@ -225,12 +314,37 @@ defmodule DataTable do
           }
         end),
 
-      togglable_fields: Enum.map(spec.fields, fn field ->
+      togglable_fields: Enum.map(static.fields, fn field ->
         {field.name, id_to_string(field.id), MapSet.member?(assigns.shown_fields, field.id)}
       end),
 
+      # Pagination
+      page_idx: page_idx,
+      page_size: page_size,
+
+      # Slots
+      field_slots:
+        static.fields
+        |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
+        |> Enum.map(& &1.slot),
+
+      target: assigns.myself,
+    })
+  end
+
+  def assign_query_render_data(socket) do
+    assigns = socket.assigns
+    static = assigns.static
+
+    page_idx = assigns.page_idx
+    page_size = assigns.page_size
+    total_results = assigns.total_results
+    max_page = div(total_results + (page_size - 1), page_size) - 1
+
+    assign(socket, %{
+      # Data
       rows: Enum.map(assigns.results, fn row ->
-        id = row[spec.id_field]
+        id = row[static.id_field]
         %{
           id: id,
           data: row,
@@ -245,34 +359,13 @@ defmodule DataTable do
       end),
 
       # Pagination
-      page_idx: page_idx,
       page_start_item: min(page_size * page_idx, total_results),
       page_end_item: min(page_size * page_idx + page_size, total_results),
-      page_size: page_size,
       total_results: total_results,
       page_max: max_page,
       has_prev: page_idx > 0,
       has_next: page_idx < max_page,
-
-      # Slots
-      top_right_slot: assigns.top_right,
-      can_expand: assigns.row_expanded != nil
-        and assigns.row_expanded != [],
-      row_expanded_slot: assigns.row_expanded,
-      has_row_buttons: assigns.row_buttons != nil
-        and assigns.row_buttons != [],
-      row_buttons_slot: assigns.row_buttons,
-      field_slots:
-        spec.fields
-        |> Enum.filter(&MapSet.member?(assigns.shown_fields, &1.id))
-        |> Enum.map(& &1.slot),
-
-      target: assigns.myself,
-      # TODO remove
-      spec: assigns.spec
-    }
-
-    assign(socket, data)
+    })
   end
 
   def mount(socket) do
@@ -280,33 +373,41 @@ defmodule DataTable do
   end
 
   def update(assigns, socket) do
-    socket = if socket.assigns[:first] != false do
-      spec = assigns_to_spec(assigns)
+    first = socket.assigns[:first] != false
 
-      #nav = if assigns[:query] do
-      #  params = URI.decode_query(assigns.query)
-      #  NavState.decode(nav, params, spec)
-      #else
-      #  nav
-      #end
+    socket = if first do
+      # TODO this is shit, should execute on every update
+      socket =
+        socket
+        |> assign_static_data(assigns)
+
+      static = socket.assigns.static
 
       filters = %DataTable.Filters{}
-      filters_changeset = DataTable.Filters.changeset(filters, spec, %{})
+      filters_changeset = DataTable.Filters.changeset2(filters, static.filter_columns, %{})
       filters_form = Phoenix.Component.to_form(filters_changeset)
 
       socket
       |> assign(%{
         id: assigns.id,
-        nav: NavState.default(spec),
-        handle_nav: assigns[:handle_nav],
-        expanded: %{},
-        shown_fields: MapSet.new(spec.default_shown_fields),
-        spec: spec,
-        selection: {:include, %{}},
+
+        filters_changeset: filters_changeset,
         filters: filters,
         filters_form: filters_form,
+
+        sort: nil,
+        page: 0,
+
+        handle_nav: assigns[:handle_nav],
+        expanded: %{},
+        shown_fields: MapSet.new(static.default_shown_fields),
+        selection: {:include, %{}},
+
+        dispatched_nav: nil,
+
         first: false
       })
+      |> assign_base_render_data()
       |> do_query()
     else
       socket
@@ -316,110 +417,38 @@ defmodule DataTable do
     socket = assign(socket, copy_assigns)
 
     # Update nav state if present
-    nav = assigns[:nav]
-    socket = if nav != nil do
-      if nav != socket.assigns.nav do
-        socket.assigns.handle_nav.(nav)
-      end
+    #new_nav = assigns[:nav]
+    #socket =
+    #  if nav != nil and new_nav != old_nav do
 
-      socket
-      |> assign(:nav, nav)
-      |> do_query()
-    else
-      socket
-    end
+    #  else
+    #    socket
+    #  end
 
-    socket = assign_render_data(socket)
+    #socket = if nav != nil do
+    #  if nav != socket.assigns.dispatched_nav do
+    #    socket.assigns.handle_nav.(nav)
+    #  end
+
+    #  socket
+    #  |> assign(:nav, nav)
+    #  |> do_query()
+    #else
+    #  socket
+    #end
+
+    socket = assign_query_render_data(socket)
 
     {:ok, socket}
   end
 
-  def assigns_to_spec(assigns) do
-    source = assigns.source
-    id_column = DataTable.Source.key(source)
-
-    fields =
-      assigns.col
-      |> Enum.map(fn slot = %{__slot__: :col, fields: fields, name: name} ->
-        %{
-          id: name,
-          name: name,
-          columns: fields,
-          slot: slot,
-          sort_field: Map.get(slot, :sort_field),
-          filter_field: Map.get(slot, :filter_field),
-          filter_field_op: Map.get(slot, :filter_field_op)
-        }
-      end)
-
-    default_shown_fields =
-      assigns.col
-      |> Enum.map(fn
-        %{visible: false} -> []
-        %{name: name} -> [name]
-      end)
-      |> Enum.concat()
-
-    always_columns =
-      assigns.row_buttons
-      |> Enum.map(fn rb -> Map.get(rb, :fields, []) end)
-      |> Enum.concat()
-      |> Enum.concat(assigns[:always_columns] || [])
-      |> Enum.concat([id_column])
-
-    expanded_fields =
-        assigns.row_expanded
-        |> Enum.map(fn re -> Map.get(re, :fields, []) end)
-        |> Enum.concat()
-
-    field_by_id =
-      fields
-      |> Enum.map(&{&1.id, &1})
-      |> Enum.into(%{})
-
-    field_id_by_str_id =
-      fields
-      |> Enum.map(fn
-        %{id: id} when is_atom(id) -> {Atom.to_string(id), id}
-        %{id: id} when is_binary(id) -> {id, id}
-      end)
-      |> Enum.into(%{})
-
-    filterable_columns = DataTable.Source.filterable_columns(source)
-    filter_types = DataTable.Source.filter_types(source)
-
-    #filterable_fields =
-    #  fields
-    #  |> Enum.filter(&(&1.filter_type != nil))
-    #  |> Enum.map(&(&1.id))
-
-    %{
-      id_field: DataTable.Source.key(source),
-      fields: fields,
-      default_shown_fields: default_shown_fields,
-      always_columns: always_columns,
-      #filterable_fields: filterable_fields,
-      filterable_columns: filterable_columns,
-      filter_types: filter_types,
-      expanded_fields: expanded_fields,
-      source: source,
-
-      field_by_id: field_by_id,
-      field_id_by_str_id: field_id_by_str_id,
-
-      selection_actions: [],
-      page_size: 20,
-      default_sort: nil,
-    }
-  end
-
-  def field_by_str_id(str_id, spec) do
-    id = Map.fetch!(spec.field_id_by_str_id, str_id)
-    Map.fetch!(spec.field_by_id, id)
+  def field_by_str_id(str_id, socket) do
+    id = Map.fetch!(socket.assigns.static.field_id_by_str_id, str_id)
+    Map.fetch!(socket.assigns.static.field_by_id, id)
   end
 
   def handle_event("toggle-field", %{"field" => field}, socket) do
-    field_data = field_by_str_id(field, socket.assigns.spec)
+    field_data = field_by_str_id(field, socket)
 
     shown_fields = if MapSet.member?(socket.assigns.shown_fields, field_data.id) do
       MapSet.delete(socket.assigns.shown_fields, field_data.id)
@@ -430,30 +459,28 @@ defmodule DataTable do
     socket =
       socket
       |> assign(:shown_fields, shown_fields)
+      |> assign_base_render_data()
       |> do_query()
-      |> assign_render_data()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
 
   def handle_event("cycle-sort", %{"sort-toggle-id" => field_str}, socket) do
-    spec = socket.assigns.spec
-
     # TODO validate further. Not a security issue, but nice to have.
     field = String.to_existing_atom(field_str)
 
     socket =
       socket
-      |> update(:nav, &NavState.cycle_sort(&1, field, spec))
+      |> update(:sort, &cycle_sort(&1, field))
+      |> assign_base_render_data()
       |> do_query()
-      |> assign_render_data()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
 
   def handle_event("toggle-expanded", %{"data-id" => data_id}, socket) do
-    spec = socket.assigns.spec
-
     expanded = if Map.has_key?(socket.assigns.expanded, data_id) do
       Map.delete(socket.assigns.expanded, data_id)
     else
@@ -463,8 +490,9 @@ defmodule DataTable do
     socket =
       socket
       |> assign(:expanded, expanded)
+      |> assign_base_render_data()
       |> do_query()
-      |> assign_render_data()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
@@ -472,23 +500,10 @@ defmodule DataTable do
   def handle_event("change-page", %{"page" => page}, socket) do
     socket =
       socket
-      |> update(:nav, &NavState.put_page(&1, page))
+      |> put_page(page)
+      |> assign_base_render_data()
       |> do_query()
-      |> assign_render_data()
-
-    {:noreply, socket}
-  end
-
-  def handle_event("add-filter", _params, socket) do
-    spec = socket.assigns.spec
-    nav = socket.assigns.nav
-
-    {_filter_id, nav} = NavState.add_filter(nav, spec)
-
-    socket =
-      socket
-      |> assign(:nav, nav)
-      |> assign_render_data()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
@@ -503,7 +518,9 @@ defmodule DataTable do
     socket =
       socket
       |> assign(:selection, selection)
-      |> assign_render_data()
+      |> assign_base_render_data()
+      |> do_query()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
@@ -521,52 +538,124 @@ defmodule DataTable do
     socket =
       socket
       |> assign(:selection, selection)
-      |> assign_render_data()
+      |> assign_base_render_data()
+      |> assign_query_render_data()
 
     {:noreply, socket}
   end
 
   def handle_event("selection-action", %{"action-idx" => action_idx}, socket) do
     {action_idx, ""} = Integer.parse(action_idx)
-    {_name, action_fn} = Enum.fetch!(socket.assigns.spec.selection_actions, action_idx)
+    {_name, action_fn} = Enum.fetch!(socket.assigns.static.selection_actions, action_idx)
 
     selection = socket.assigns.selection
     action_fn.(selection)
 
-    socket = assign_render_data(socket)
+    socket =
+      socket
+      |> assign_base_render_data()
+      |> assign_query_render_data()
+
     {:noreply, socket}
   end
 
   def handle_event("filters-change", params, socket) do
+    static = socket.assigns.static
     filters_changes = params["filters"] || %{}
 
-    filters_changeset =
+    changeset =
       %DataTable.Filters{}
-      |> DataTable.Filters.changeset(socket.assigns.spec, filters_changes)
-      |> Map.put(:action, :validate)
+      |> DataTable.Filters.changeset2(static.filter_columns, filters_changes)
+      |> add_filter_defaults(static)
 
-    {socket, changeset} =
-      case Ecto.Changeset.apply_action(filters_changeset, :validate) do
-        {:ok, filters} ->
-          IO.inspect(filters)
-          {assign(socket, :filters, filters), filters_changeset}
-        {:error, changeset} -> {socket, changeset}
+    socket =
+      case Ecto.Changeset.apply_action(changeset, :insert) do
+        {:ok, data} ->
+          socket = assign(socket, :filters, data)
+
+          socket
+          |> assign_base_render_data()
+          |> do_query()
+          |> assign_query_render_data()
+          |> assign(%{
+            filters_changeset: changeset,
+            filters_form: to_form(changeset)
+          })
+
+        {:error, changeset} ->
+          socket = assign(socket, %{
+            filters_changeset: changeset,
+            filters_form: to_form(changeset)
+          })
+          assign(socket, :filters_form, to_form(changeset))
       end
 
-    socket =
-      socket
-      |> assign(:filters_form, Phoenix.Component.to_form(changeset))
+    socket = dispatch_handle_nav(socket)
 
-    socket =
-      if changeset.valid? do
-        do_query(socket)
+    {:noreply, socket}
+  end
+
+  def nav_from_state(socket) do
+    raw_filters = Ecto.Changeset.apply_changes(socket.assigns.filters_changeset)
+
+    %DataTable.NavState{
+      filters: Enum.map(raw_filters.filters, fn %{field: field, op: op, value: value} ->
+        {field, op, value}
+      end),
+      sort: socket.assigns.sort,
+      page: socket.assigns.page
+    }
+  end
+
+  def dispatch_handle_nav(socket) do
+    handle_nav = socket.assigns.handle_nav
+    if handle_nav != nil do
+      new_nav = nav_from_state(socket)
+
+      if new_nav != socket.assigns.dispatched_nav do
+        handle_nav.(new_nav)
+        assign(socket, :dispatched_nav, new_nav)
       else
         socket
       end
+    else
+      socket
+    end
+  end
 
-    socket = assign_render_data(socket)
+  def add_filter_defaults(changeset, assigns) do
+    data = Ecto.Changeset.apply_changes(changeset)
 
-    {:noreply, socket}
+    first_field = hd(assigns.filter_column_order)
+    first_op = hd(assigns.filter_columns[first_field].ops_order)
+
+    changes = %{
+      "filters" => Enum.map(data.filters, fn filter ->
+        %{
+          "field" => filter.field || first_field,
+          "op" => filter.op || first_op,
+          "value" => filter.value || ""
+        }
+      end)
+    }
+
+    DataTable.Filters.changeset2(changeset, assigns.filter_columns, changes)
+  end
+
+  def cycle_sort(sort_state, field) do
+    case sort_state do
+      {^field, :asc} -> {field, :desc}
+      {^field, :desc} -> nil
+      _ -> {field, :asc}
+    end
+  end
+
+  def put_page(state, page) when is_binary(page) do
+    {page, ""} = Integer.parse(page)
+    assign(state, :page, page)
+  end
+  def put_page(state, page) when is_integer(page) do
+    assign(state, :page, page)
   end
 
 end
