@@ -6,7 +6,7 @@ defmodule ExampleWeb.ArticlesLive do
     ~H"""
     <DataTable.live_data_table
       id="table"
-      source={{DataTable.Ecto, {Example.Repo, @source_query}}}
+      source={{DataTable.Ecto.Source, {Example.Repo, @source_query}}}
       handle_nav={&send(self(), {:nav, &1})}
       nav={@nav}>
 

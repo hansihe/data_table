@@ -1,4 +1,7 @@
 defmodule DataTable do
+  @moduledoc """
+  """
+
   use Phoenix.LiveComponent
 
   def id_to_string(id) when is_binary(id), do: id
@@ -21,6 +24,12 @@ defmodule DataTable do
     required: true,
     doc: """
     """
+
+  #attr :default_nav, :any,
+  #  doc: """
+  #  If the `nav` property is not specified, this will override the initial
+  #  `nav` state of the table.
+  #  """
 
   attr :nav, :any,
     doc: """

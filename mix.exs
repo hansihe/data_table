@@ -14,7 +14,8 @@ defmodule DataTable.MixProject do
 
   def application do
     [
-      mod: {DataTable.Application, []}
+      mod: {DataTable.Application, []},
+      extra_applications: [:logger]
     ]
   end
 
@@ -28,13 +29,6 @@ defmodule DataTable.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      extra_applications: [:logger]
-    ]
-  end
-
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -42,6 +36,7 @@ defmodule DataTable.MixProject do
       {:phoenix_live_view, "~> 0.19"},
       {:ecto, "~> 3.8"},
       {:petal_components, "~> 1.2"},
+      {:heroicons, "~> 0.5.3"},
 
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 
