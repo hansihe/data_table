@@ -1,7 +1,89 @@
-defmodule DataTable.TailwindTheme do
+defmodule DataTable.Theme.Tailwind do
+  @doc """
+  A modern data table theme implemented using Tailwind.
+
+  Design inspired by https://www.figma.com/community/file/1021406552622495462/data-table-design-components-free-ui-kit
+  by HBI Agency and Violetta Nekrasova according to CC BY 4.0.
+  """
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   import DataTable.Components
+
+  attr :size, :atom, default: :small, values: [:small, :medium, :large]
+  slot :icon
+  slot :inner_block, required: true
+  def btn_basic(assigns) do
+    ~H"""
+    <% classes = [
+      "flex cursor-pointer",
+      "rounded-lg hover:bg-indigo-50",
+      "text-zinc-800 hover:text-indigo-600",
+      (if @size == :small, do: "text-sm px-2 py-1 space-x-1"),
+      (if @size == :small and @icon != nil, do: "pl-1.5"),
+      (if @size == :medium, do: ""),
+      (if @size == :medium and @icon == nil, do: ""),
+      (if @size == :large, do: ""),
+      (if @size == :large and @icon == nil, do: "")
+    ] %>
+
+    <div tabindex="0" class={classes}>
+      <%= render_slot(@icon) %>
+      <div><%= render_slot(@inner_block) %></div>
+    </div>
+    """
+  end
+
+  slot :inner_block, required: true
+  def btn_icon(assigns) do
+    ~H"""
+    <div tabindex="0" class={[
+      "cursor-pointer",
+      "flex justify-center",
+      "rounded-full w-7 h-7",
+      "text-zinc-800",
+      "hover:text-indigo-600 hover:bg-indigo-50"
+    ]}>
+      <%= render_slot(@inner_block) %>
+    </div>
+    """
+  end
+
+  attr :field, Phoenix.HTML.FormField
+  attr :options, :any
+  def select(assigns) do
+    ~H"""
+    <select
+      name={@field.name}
+      class={[
+        "text-sm pl-2 py-1 pr-10",
+        "outline-1 !border-0 !ring-0 rounded-lg",
+        "bg-zinc-100 text-zinc-800 shadow-indigo-600 outline-indigo-600",
+        "focus:text-indigo-600 focus:shadow-[0_0_2px_0px] focus:outline",
+      ]}>
+      <%= for {id, name} <- @options do %>
+        <option value={id} selected={@field.value == id}><%= name %></option>
+      <% end %>
+    </select>
+    """
+  end
+
+  attr :field, Phoenix.HTML.FormField
+  def text_input(assigns) do
+    ~H"""
+    <% has_error = @field.errors != [] %>
+    <input
+      type="text"
+      name={@field.name}
+      value={@field.value}
+      class={[
+        "text-sm pl-2 py-1",
+        "focus:outline outline-1 !border-0 !ring-0 rounded-lg",
+        "bg-zinc-100 text-zinc-800 shadow-indigo-600 outline-indigo-600",
+        "focus:shadow-[0_0_2px_0px]",
+        (if has_error, do: "outline outline-red-600 !bg-red-50")
+      ]}/>
+    """
+  end
 
   def generate_pages(page, page_size, total_results) do
     max_page = div(total_results + (page_size - 1), page_size) - 1
@@ -22,19 +104,19 @@ defmodule DataTable.TailwindTheme do
     }
   end
 
-  def top(assigns) do
+  def root(assigns) do
     ~H"""
     <div>
       <.filter_header
-        can_select={@can_select}
-        has_selection={@has_selection}
-        selection_actions={@selection_actions}
         filters_form={@filters_form}
+        can_select={@static.can_select}
+        has_selection={@has_selection}
+        selection_actions={@static.selection_actions}
         target={@target}
-        top_right_slot={@top_right_slot}
-        spec={@spec}
-        filters_fields={@filters_fields}
-        filters_default_field={@filters_default_field}/>
+        top_right_slot={@top_right}
+        filter_column_order={@static.filter_column_order}
+        filter_columns={@static.filter_columns}
+        filters_fields={@static.filters_fields}/>
 
       <div class="flex flex-col">
         <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -42,22 +124,22 @@ defmodule DataTable.TailwindTheme do
             <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
               <table class="min-w-full divide-y divide-gray-300 bg-white">
                 <.table_header
-                  can_select={@can_select}
+                  can_select={@static.can_select}
                   header_selection={@header_selection}
                   target={@target}
-                  can_expand={@can_expand}
-                  row_expanded_slot={@row_expanded_slot}
+                  can_expand={@static.can_expand}
+                  row_expanded_slot={@row_expanded}
                   header_fields={@header_fields}
                   togglable_fields={@togglable_fields}/>
 
                 <.table_body
                   rows={@rows}
-                  can_select={@can_select}
+                  can_select={@static.can_select}
                   field_slots={@field_slots}
-                  has_row_buttons={@has_row_buttons}
-                  row_buttons_slot={@row_buttons_slot}
-                  can_expand={@can_expand}
-                  row_expanded_slot={@row_expanded_slot}
+                  has_row_buttons={@static.has_row_buttons}
+                  row_buttons_slot={@static.row_buttons_slot}
+                  can_expand={@static.can_expand}
+                  row_expanded_slot={@row_expanded}
                   target={@target}/>
 
                 <.table_footer
@@ -66,7 +148,6 @@ defmodule DataTable.TailwindTheme do
                   total_results={@total_results}
                   page_idx={@page_idx}
                   page_size={@page_size}
-                  total_results={@total_results}
                   target={@target}
                   has_prev={@has_prev}
                   has_next={@has_next}/>
@@ -94,24 +175,12 @@ defmodule DataTable.TailwindTheme do
           </PetalComponents.Dropdown.dropdown>
         </div>
 
-        <div class="px-4 py-3 sm:flex sm:items-center">
-          <h3 class="text-sm font-medium text-gray-500">
-            Filters
-          </h3>
-
-          <div aria-hidden="true" class="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"></div>
-
-          <div class="mt-2 sm:mt-0 sm:ml-4">
-            <div class="-m-1 flex flex-wrap items-center">
-              <.filters_form
-                form={@filters_form}
-                target={@target}
-                spec={@spec}
-                filters_fields={@filters_fields}
-                filters_default_field={@filters_default_field}/>
-            </div>
-          </div>
-        </div>
+        <.filters_form
+          target={@target}
+          filters_form={@filters_form}
+          filter_column_order={@filter_column_order}
+          filter_columns={@filter_columns}
+          filters_fields={@filters_fields}/>
       </div>
 
       <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -134,25 +203,31 @@ defmodule DataTable.TailwindTheme do
         <th :if={@can_expand} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 w-10 sm:pl-6"></th>
 
         <th :for={field <- @header_fields} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-          <a :if={not field.can_sort} class="group inline-flex">
-            <%= field.name %>
-          </a>
+          <div class="flex items-center justify-between">
+            <a :if={not field.can_sort} class="group inline-flex">
+              <%= field.name %>
+            </a>
 
-          <a :if={field.can_sort} href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@target} phx-value-sort-toggle-id={field.sort_toggle_id}>
-            <%= field.name %>
+            <a :if={field.can_sort} href="#" class="group inline-flex" phx-click="cycle-sort" phx-target={@target} phx-value-sort-toggle-id={field.sort_toggle_id}>
+              <%= field.name %>
 
-            <span :if={field.sort == :asc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-              <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-            </span>
+              <span :if={field.sort == :asc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
+                <Heroicons.chevron_down mini class="h-5 w-5"/>
+              </span>
 
-            <span :if={field.sort == :desc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
-              <Heroicons.chevron_up mini={true} class="h-5 w-5"/>
-            </span>
+              <span :if={field.sort == :desc} class="ml-2 flex-none rounded bg-gray-200 text-gray-900 group-hover:bg-gray-300">
+                <Heroicons.chevron_up mini class="h-5 w-5"/>
+              </span>
 
-            <span :if={field.sort == nil} class="invisible ml-2 flex-none rounded text-gray-400 group-hover:visible group-focus:visible">
-              <Heroicons.chevron_down mini={true} class="h-5 w-5"/>
-            </span>
-          </a>
+              <span :if={field.sort == nil} class="invisible ml-2 flex-none rounded text-gray-400 group-hover:visible group-focus:visible">
+                <Heroicons.chevron_down mini class="h-5 w-5"/>
+              </span>
+            </a>
+
+            <!--<a :if={field.can_filter} class="text-gray-400" href="#" phx-click="add-field-filter" phx-target={@target} phx-value-filter-id={field.filter_field_id}>
+              <Heroicons.funnel class="h-4 w-4"/>
+            </a>-->
+          </div>
         </th>
 
         <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 w-0 whitespace-nowrap !border-0">
@@ -280,76 +355,100 @@ defmodule DataTable.TailwindTheme do
     """
   end
 
-  defp op_options_and_default(_spec, nil), do: {[], ""}
-  defp op_options_and_default(spec, field_value) do
-    atom_field = String.to_existing_atom(field_value)
-    filter_data = Enum.find(spec.filterable_columns, & &1.col_id == atom_field)
+  #defp op_options_and_default(_spec, nil), do: {[], ""}
+  #defp op_options_and_default(spec, field_value) do
+  #  atom_field = String.to_existing_atom(field_value)
+  #  filter_data = Enum.find(spec.filterable_columns, & &1.col_id == atom_field)
 
-    if filter_data == nil do
-      {[], ""}
-    else
-      type_map = spec.filter_types[filter_data[:type]] || %{}
-      ops = type_map[:ops] || []
-      kvs = Enum.map(ops, fn {filter_id, filter_name} -> {filter_name, filter_id} end)
+  #  if filter_data == nil do
+  #    {[], ""}
+  #  else
+  #    type_map = spec.filter_types[filter_data[:type]] || %{}
+  #    ops = type_map[:ops] || []
+  #    kvs = Enum.map(ops, fn {filter_id, filter_name} -> {filter_name, filter_id} end)
 
-      default_selected = case ops do
-        [] -> ""
-        [{id, _} | _] -> id
-      end
+  #    default_selected = case ops do
+  #      [] -> ""
+  #      [{id, _} | _] -> id
+  #    end
 
-      {kvs, default_selected}
-    end
-  end
+  #    {kvs, default_selected}
+  #  end
+  #end
 
 
-  attr :form, :any
+  #attr :form, :any
+  #attr :target, :any
+  #attr :spec, :any
+
+  #attr :filters_fields, :any
+  #attr :filterable_fields, :any
+
   attr :target, :any
-  attr :spec, :any
-
-  attr :filters_default_field, :any
-  attr :filterable_fields, :any
-
-  defp filters_form(assigns) do
+  attr :filters_form, :any
+  attr :filter_column_order, :any
+  attr :filter_columns, :any
+  attr :filters_fields, :any
+  attr :update_filters, :any
+  def filters_form(assigns) do
     ~H"""
-    <.form for={@form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="flex flex-warp items-center">
+    <.form for={@filters_form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="py-3 sm:flex items-start">
+      <h3 class="text-sm font-medium text-zinc-800">
+        <!-- Filters -->
+        <Heroicons.funnel class="w-4 h-8"/>
+      </h3>
 
-      <.inputs_for :let={filter} field={@form[:filters]}>
-        <div class="overflow-hidden m-1 inline-flex items-center rounded-full border pr-2 text-sm font-medium text-gray-900 h-8 border-gray-200 bg-white">
-          <input type="hidden" name="filters[filters_sort][]" value={filter.index}/>
+      <!-- <div aria-hidden="true" class="hidden h-5 w-px bg-gray-300 sm:ml-4 sm:block"></div> -->
 
-          <% field = filter[:field] %>
-          <% selected_field = field.value || @filters_default_field %>
-          <select id={field.id} name={field.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 bg-transparent">
-            <%= Phoenix.HTML.Form.options_for_select(
-              Enum.map(@filters_fields, &{&1.name, &1.id_str}),
-              selected_field
-            ) %>
-          </select>
+      <div class="ml-4 min-h-[32px] flex items-center">
+        <div class="-m-1 flex flex-col space-y-2">
+          <.inputs_for :let={filter} field={@filters_form[:filters]}>
+            <div class="flex flex-row space-x-2">
+              <input
+                type="hidden"
+                name="filters[filters_sort][]"
+                value={filter.index}
+              />
 
-          <% op = filter[:op] %>
-          <select id={op.id} name={op.name} class="border-none p-0 pl-4 pr-4 h-full text-inherit text-sm font-medium appearance-none bg-none cursor-pointer hover:bg-gray-200 focus:ring-0 focus:bg-gray-200 text-center bg-transparent">
-            <% {options, default_selected} = op_options_and_default(@spec, selected_field) %>
-            <% selected_op = op.value || default_selected %>
-            <%= Phoenix.HTML.Form.options_for_select(options, selected_op) %>
-          </select>
+              <.select
+                field={filter[:field]}
+                options={Enum.map(@filter_column_order, fn id -> {id, @filter_columns[id].name} end)}/>
 
-          <% value = filter[:value] %>
-          <input type="text" id={value.id} name={value.name} value={value.value} class="text-sm font-medium border-none pl-2 pr-2 h-full focus:outline-0 bg-transparent"/>
+              <% field_config = @filter_columns[filter[:field].value] %>
+              <.select
+                :if={field_config == nil}
+                field={filter[:op]}
+                options={[]}/>
+              <.select
+                :if={field_config != nil}
+                field={filter[:op]}
+                options={Enum.map(field_config.ops_order, fn op_id ->
+                  {op_id, field_config.ops[op_id].name}
+                end)}/>
 
-          <label class="ml-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-500 cursor-pointer">
-            <input type="checkbox" name="filters[filters_drop][]" value={filter.index} class="hidden" />
-            <svg class="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
-              <path stroke-linecap="round" stroke-width="1.5" d="M1 1l6 6m0-6L1 7" />
-            </svg>
-          </label>
+              <.text_input field={filter[:value]}/>
+              <label>
+                <input type="checkbox" name="filters[filters_drop][]" value={filter.index} class="hidden"/>
+                <.btn_icon>
+                  <Heroicons.trash class="w-4"/>
+                </.btn_icon>
+              </label>
+            </div>
+          </.inputs_for>
+
+          <div class="flex flex-row h-8 mx-2">
+            <label>
+              <input type="checkbox" name="filters[filters_sort][]" class="hidden"/>
+              <.btn_basic>
+                <:icon>
+                  <Heroicons.plus class="w-4"/>
+                </:icon>
+                Filter
+              </.btn_basic>
+            </label>
+          </div>
         </div>
-      </.inputs_for>
-
-      <label class="m-1 inline-flex items-center rounded-full border border-gray-200 bg-white p-2 text-gray-400 cursor-pointer hover:bg-gray-200 hover:text-gray-500">
-        <input type="checkbox" name="filters[filters_sort][]" class="hidden"/>
-        <Heroicons.plus class="w-4 h-4"/>
-      </label>
-
+      </div>
     </.form>
     """
   end

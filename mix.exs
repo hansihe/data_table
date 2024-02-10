@@ -12,6 +12,13 @@ defmodule DataTable.MixProject do
     ]
   end
 
+  def application do
+    [
+      mod: {DataTable.Application, []},
+      extra_applications: [:logger]
+    ]
+  end
+
   def package do
     [
       description: "Flexible data table component for LiveView",
@@ -22,13 +29,6 @@ defmodule DataTable.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      extra_applications: [:logger]
-    ]
-  end
-
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -36,8 +36,12 @@ defmodule DataTable.MixProject do
       {:phoenix_live_view, "~> 0.19"},
       {:ecto, "~> 3.8"},
       {:petal_components, "~> 1.2"},
+      {:heroicons, "~> 0.5.3"},
 
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+
+      {:plug_cowboy, "~> 2.5", only: :dev_server},
+      {:jason, "~> 1.2", only: :dev_server}
     ]
   end
 end

@@ -11,7 +11,7 @@ Some of the features the component has:
 * First class Ecto support
 * Data is fetched from `DataTable.Source` behaviour, usable with custom data sources (R)
 * Support for persisting sort/filter state to query string (R)
-* Tailwind theme included, but fully customizable (R)
+* Tailwind theme included, but fully customizable
 
 Rows marked with R are currently undergoing a refactor, and are rough around the edges.
 
@@ -20,7 +20,7 @@ def render(assigns) do
   ~H"""
   <DataTable.live_data_table
     id="table"
-    source={{DataTable.Ecto, {MyApp.Repo, @source_query}}}>
+    source={{DataTable.Ecto.Source, {MyApp.Repo, @source_query}}}>
 
     <:col :let={row} name="Id" fields={[:id]} sort_field={:id}>
       <%= row.id %>
@@ -64,8 +64,19 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/data_table>.
+### Tailwind Theme
+If using the `Tailwind` theme, you must have tailwind set up for your app.
+You must also:
+* Configure tailwind to generate styles for the `data_table` dependency
+* Include the `petal_components` css in your app
 
-# data_table
+Add this to the `content` list in your `assets/tailwind.js`:
+```js
+"../deps/petal_components/**/*.*ex",
+"../deps/data_table/**/*.*ex"
+```
+
+Add this to the end of your `assets/css/base.css`:
+```scss
+@import "../../deps/petal_components/assets/default.css";
+```
