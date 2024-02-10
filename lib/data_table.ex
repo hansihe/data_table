@@ -3,6 +3,13 @@ defmodule DataTable do
 
   def id_to_string(id) when is_binary(id), do: id
 
+  attr :theme, :atom,
+    default: DataTable.Theme.Tailwind,
+    doc: """
+    The theme for the DataTable. Defaults to `DataTable.Theme.Tailwind`, a modern theme
+    implemented using `tailwind`.
+    """
+
   attr :id, :any,
     required: true,
     doc: """
@@ -91,7 +98,7 @@ defmodule DataTable do
   end
 
   def render(assigns) do
-    DataTable.Theme.Tailwind.top(assigns)
+    assigns.static.theme.root(assigns)
   end
 
   def do_query(socket) do
@@ -181,6 +188,7 @@ defmodule DataTable do
       end)
 
     static = %{
+      theme: comp_assigns.theme,
       source: source,
 
       # Selection

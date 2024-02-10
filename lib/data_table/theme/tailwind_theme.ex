@@ -1,4 +1,10 @@
 defmodule DataTable.Theme.Tailwind do
+  @doc """
+  A modern data table theme implemented using Tailwind.
+
+  Design inspired by https://www.figma.com/community/file/1021406552622495462/data-table-design-components-free-ui-kit
+  by HBI Agency and Violetta Nekrasova according to CC BY 4.0.
+  """
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   import DataTable.Components
@@ -98,7 +104,7 @@ defmodule DataTable.Theme.Tailwind do
     }
   end
 
-  def top(assigns) do
+  def root(assigns) do
     ~H"""
     <div>
       <.filter_header
