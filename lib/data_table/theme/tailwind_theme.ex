@@ -196,13 +196,16 @@ defmodule DataTable.Theme.Tailwind do
     ~H"""
     <thead class="bg-gray-50">
       <tr class="divide-x divide-gray-200">
-        <th :if={@can_select} scope="col" class="w-10 pl-4">
+        <th :if={@can_select} scope="col" class="w-10 pl-4 !border-0">
           <.checkbox state={@header_selection} on_toggle="toggle-all" phx-target={@target}/>
         </th>
 
-        <th :if={@can_expand} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 w-10 sm:pl-6"></th>
+        <th :if={@can_expand} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 w-10 sm:pl-6 !border-0"></th>
 
-        <th :for={field <- @header_fields} scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+        <th
+            :for={{field, idx} <- Enum.with_index(@header_fields)}
+            scope="col"
+            class={["py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6", (if idx == 0, do: "!border-0")]}>
           <div class="flex items-center justify-between">
             <a :if={not field.can_sort} class="group inline-flex">
               <%= field.name %>
@@ -263,17 +266,19 @@ defmodule DataTable.Theme.Tailwind do
     <tbody class="bg-white">
       <%= for row <- @rows do %>
         <tr class="border-t border-gray-200 hover:bg-gray-50 divide-x divide-gray-200">
-          <td :if={@can_select} class="pl-4">
-            <.checkbox state={@selected} on_toggle="toggle-row" phx-target={@target} phx-value-id={row.id}/>
+          <td :if={@can_select} class="pl-4 !border-0">
+            <.checkbox state={row.selected} on_toggle="toggle-row" phx-target={@target} phx-value-id={row.id}/>
           </td>
 
-          <td :if={@can_expand} class="cursor-pointer" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@target} phx-value-data-id={row.id}>
+          <td :if={@can_expand} class="cursor-pointer !border-0" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@target} phx-value-data-id={row.id}>
             <% class = if @can_select, do: "ml-5", else: "ml-3" %>
             <Heroicons.chevron_up :if={row.expanded} mini={true} class={"h-5 w-5 " <> class}/>
             <Heroicons.chevron_down :if={not row.expanded} mini={true} class={"h-5 w-5 " <> class}/>
           </td>
 
-          <td :for={field_slot <- @field_slots} class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6">
+          <td
+              :for={{field_slot, idx} <- Enum.with_index(@field_slots)}
+              class={["whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6", (if idx == 0, do: "!border-0")]}>
             <%= render_slot(field_slot, row.data) %>
           </td>
 

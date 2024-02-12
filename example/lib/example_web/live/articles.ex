@@ -18,6 +18,12 @@ defmodule ExampleWeb.ArticlesLive do
         <%= row.title %>
       </:col>
 
+      <:row_expanded>
+        Expanded
+      </:row_expanded>
+
+      <:selection_action label="Test Action" handle_action={fn -> nil end}/>
+
     </DataTable.live_data_table>
     """
   end

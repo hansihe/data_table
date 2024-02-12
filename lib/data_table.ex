@@ -4,7 +4,7 @@ defmodule DataTable do
 
   use Phoenix.LiveComponent
 
-  def id_to_string(id) when is_binary(id), do: id
+  defp id_to_string(id) when is_binary(id), do: id
 
   attr :theme, :atom,
     default: DataTable.Theme.Tailwind,
@@ -176,7 +176,10 @@ defmodule DataTable do
   def assign_static_data(socket, comp_assigns) do
     source = comp_assigns.source
 
-    selection_actions = [] # TODO
+    selection_actions =
+      comp_assigns.selection_action
+      |> Enum.map(fn %{label: label, handle_action: action} -> {label, action} end)
+      |> Enum.with_index()
 
     filterable_columns = DataTable.Source.filterable_columns(source)
     filter_types = DataTable.Source.filter_types(source)
@@ -238,6 +241,11 @@ defmodule DataTable do
         |> Enum.concat()
         |> Enum.concat(comp_assigns[:always_columns] || [])
         |> Enum.concat([id_field]),
+
+      expanded_fields:
+        comp_assigns.row_expanded
+        |> Enum.map(fn re -> Map.get(re, :fields, []) end)
+        |> Enum.concat(),
 
       # Sort
       default_sort: nil,
