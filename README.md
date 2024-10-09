@@ -3,6 +3,7 @@
 A flexible DataTable component for LiveView.
 
 ![Screenshot of simple DataTable usage](screenshot.png "Simple DataTable usage")
+[Source code for the screenshot above. You get all of this in ~50loc.](https://github.com/hansihe/data_table/blob/main/example/lib/example_web/live/articles.ex)
 
 Some of the features the component has:
 * Filtering
