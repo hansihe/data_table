@@ -2,14 +2,16 @@
 
 A flexible DataTable component for LiveView.
 
+![Screenshot of simple DataTable usage](screenshot.png "Simple DataTable usage")
+
 Some of the features the component has:
 * Filtering
 * Sorting
 * Expandable rows
 * Pagination
-* Row selection with customizable bulk actions (R)
-* First class Ecto support
-* Data is fetched from `DataTable.Source` behaviour, usable with custom data sources (R)
+* Row selection with customizable bulk actions
+* Data is fetched from `DataTable.Source` behaviour, usable with custom data sources
+* First class Ecto `Source`
 * Support for persisting sort/filter state to query string (R)
 * Tailwind theme included, but fully customizable
 

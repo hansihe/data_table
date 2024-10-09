@@ -19,7 +19,9 @@ defmodule ExampleWeb.ArticlesLive do
       </:col>
 
       <:row_expanded>
-        Expanded
+        <div class="p-4">
+          Expanded
+        </div>
       </:row_expanded>
 
       <:selection_action label="Test Action" handle_action={fn -> nil end}/>

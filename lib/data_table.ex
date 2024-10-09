@@ -206,10 +206,11 @@ defmodule DataTable do
       # Selection
       can_select: selection_actions != nil and
         selection_actions != [],
-      selection_actions: Enum.map(selection_actions, fn {{name, _action_fn}, idx} ->
+      selection_actions: Enum.map(selection_actions, fn {{name, action_fn}, idx} ->
         %{
           label: name,
-          action_idx: idx
+          action_idx: idx,
+          action_fn: action_fn
         }
       end),
 
@@ -571,7 +572,7 @@ defmodule DataTable do
 
   def handle_event("selection-action", %{"action-idx" => action_idx}, socket) do
     {action_idx, ""} = Integer.parse(action_idx)
-    {_name, action_fn} = Enum.fetch!(socket.assigns.static.selection_actions, action_idx)
+    %{action_fn: action_fn} = Enum.fetch!(socket.assigns.static.selection_actions, action_idx)
 
     selection = socket.assigns.selection
     action_fn.(selection)
