@@ -1,4 +1,4 @@
-defmodule DataTable.Components do
+defmodule DataTable.Theme.Tailwind.Components do
   use Phoenix.Component
 
   attr :state, :atom

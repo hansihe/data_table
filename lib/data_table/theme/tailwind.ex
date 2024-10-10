@@ -7,7 +7,14 @@ defmodule DataTable.Theme.Tailwind do
   """
   use Phoenix.Component
   alias Phoenix.LiveView.JS
-  import DataTable.Components
+  import DataTable.Theme.Tailwind.Components
+
+  alias DataTable.Theme.Util
+
+  # If using this module as the base for your own theme, you may wish to use the
+  # upstream libraries instead of these vendored versions.
+  alias DataTable.Theme.Tailwind.Heroicons # From `:heroicons` Heroicons
+  alias DataTable.Theme.Tailwind.Dropdown # From `:petal_components` PetalComponents.Dropdown`
 
   attr :size, :atom, default: :small, values: [:small, :medium, :large]
   slot :icon
@@ -85,25 +92,6 @@ defmodule DataTable.Theme.Tailwind do
     """
   end
 
-  def generate_pages(page, page_size, total_results) do
-    max_page = div(total_results + (page_size - 1), page_size) - 1
-
-    middle_pages =
-      (page - 3)..(page + 3)
-      |> Enum.filter(&(&1 >= 0))
-      |> Enum.filter(&(&1 <= max_page))
-
-    pages = Enum.map(middle_pages, fn i ->
-      {:page, i, i == page}
-    end)
-
-    {
-      page > 0,
-      page < max_page,
-      pages,
-    }
-  end
-
   def root(assigns) do
     ~H"""
     <div>
@@ -165,14 +153,14 @@ defmodule DataTable.Theme.Tailwind do
     <div class="sm:flex sm:justify-between">
       <div class="flex items-center">
         <div :if={@can_select and @has_selection}>
-          <PetalComponents.Dropdown.dropdown label="Selection" js_lib="live_view_js" placement="right">
-            <PetalComponents.Dropdown.dropdown_menu_item
+          <Dropdown.dropdown label="Selection" placement="right">
+            <Dropdown.dropdown_menu_item
               :for={%{label: label, action_idx: idx} <- @selection_actions}
               label={label}
               phx-click="selection-action"
               phx-value-action-idx={idx}
               phx-target={@target}/>
-          </PetalComponents.Dropdown.dropdown>
+          </Dropdown.dropdown>
         </div>
 
         <.filters_form
@@ -236,7 +224,7 @@ defmodule DataTable.Theme.Tailwind do
         <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 w-0 whitespace-nowrap !border-0">
           <span class="sr-only">Buttons</span>
           <div class="flex justify-end content-center">
-            <PetalComponents.Dropdown.dropdown js_lib="live_view_js">
+            <Dropdown.dropdown>
               <:trigger_element>
                 <Heroicons.list_bullet mini class="h-4 w-4"/>
               </:trigger_element>
@@ -253,7 +241,7 @@ defmodule DataTable.Theme.Tailwind do
                   </div>
                 </div>
               </div>
-            </PetalComponents.Dropdown.dropdown>
+            </Dropdown.dropdown>
           </div>
         </th>
       </tr>
@@ -317,7 +305,7 @@ defmodule DataTable.Theme.Tailwind do
               </p>
             </div>
             <div>
-              <% {_has_prev, _has_next, pages} = generate_pages(@page_idx, @page_size, @total_results) %>
+              <% pages = Util.generate_pages(@page_idx, @page_size, @total_results) %>
               <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                 <a :if={@has_prev} phx-click="change-page" phx-target={@target} phx-value-page={@page_idx - 1} class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
                   <span class="sr-only">Previous</span>

@@ -1,4 +1,4 @@
-defmodule DataTable.Ecto do
+defmodule DataTable.EctoFoo do
 
   defstruct [
     base_query: nil,

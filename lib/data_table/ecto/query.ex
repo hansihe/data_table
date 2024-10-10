@@ -1,4 +1,4 @@
-defmodule DataTable.Ecto.Query do
+defmodule DataTable.Source.Ecto.Query do
 
   defstruct [
     base: nil,
@@ -39,10 +39,10 @@ defmodule DataTable.Ecto.Query do
 
   @doc """
   Functions exactly like `Ecto.Query.from/2`, but with some minor modifications:
-   * The `:columns` key is used instead of `select` and `select_merge`
-   * `select` and `select_merge` are not accepted
-   * You can specify which column will be used as the id using the `:id` keyword
-   * Filterable columns are specified using `filters`
+  * The `:columns` key is used instead of `select` and `select_merge`
+  * `select` and `select_merge` are not accepted
+  * You can specify which column will be used as the id using the `:id` keyword
+  * Filterable columns are specified using `filters`
 
   ## Filters
   """
