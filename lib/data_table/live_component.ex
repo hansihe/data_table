@@ -595,13 +595,10 @@ defmodule DataTable.LiveComponent do
 
   def dispatch_handle_nav(socket) do
     handle_nav = socket.assigns.handle_nav
+    new_nav = nav_from_state(socket)
 
-    if handle_nav != nil do
-      new_nav = nav_from_state(socket)
-
-      if new_nav != socket.assigns.dispatched_nav do
-        handle_nav.(new_nav)
-      end
+    if handle_nav != nil and new_nav != socket.assigns.dispatched_nav do
+      handle_nav.(new_nav)
     end
 
     assign(socket, :dispatched_nav, new_nav)

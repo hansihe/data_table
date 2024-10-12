@@ -2,7 +2,65 @@ defmodule DataTable do
   @moduledoc """
   DataTable is a flexible and interactive table component for LiveView.
 
-  [DataTable Component Cheat Sheet](data_table_component_cheatsheet.html)
+  ```elixir
+  def render(assigns) do
+    ~H"""
+    <DataTable.live_data_table
+      id="table"
+      source={{DataTable.Ecto, {MyApp.Repo, @source_query}}}>
+
+      <:col :let={row} name="Id" fields={[:id]} sort_field={:id}>
+        <%= row.id %>
+      </:col>
+
+      <:col :let={row} name="Name" fields={[:first_name, :last_name]}>
+        <%= row.first_name <> " " <> row.last_name %>
+      </:col>
+
+    </DataTable.live_data_table>
+    \"""
+  end
+
+  def mount(_params, _session, socket) do
+    query = DataTable.Ecto.Query.from(
+      user in MyApp.User,
+      columns: %{
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name
+      },
+      key: :id
+    )
+
+    socket = assign(socket, :source_query, query)
+
+    [...]
+  end
+  ```
+
+  ## Common Tasks
+  * [Cheat Sheet for DataTable Component](data_table_component_cheatsheet.html)
+  * [Setting up query string navigation](DataTable.NavState.html#module-persisting-datatable-state-in-query-string)
+
+  ## Getting started
+  First you need to add `data_table` to your `mix.exs`:
+
+  ```elixir
+  defp deps do
+    [
+      [...]
+      {:data_table, "~> 1.0}
+    ]
+  end
+  ```
+
+  If you want to use the default `Tailwind` theme, you need to set up `tailwind` to include styles
+  from the `data_table` dependency.
+
+  Add this to the `content` list in your `assets/tailwind.js`:
+  ```
+  "../deps/data_table/**/*.*ex"
+  ```
 
   ## Data model
 

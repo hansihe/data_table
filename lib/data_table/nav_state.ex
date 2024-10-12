@@ -8,6 +8,69 @@ defmodule DataTable.NavState do
   * Current page
   * Active sort
   * Active filters
+
+  ## Persisting DataTable state in query string
+  We need to do 2 things:
+  * 1. Decode and forward the query string to our `LiveData`
+  * 2. Apply changes to `NavState` to the query string of the `LiveView`
+
+  ### 1. Query string -> `DataTable`
+  We start by implementing the `handle_params/3` callback in our `LiveView`.
+
+  This is called whenever the URI changes, and we use it to catch query
+  string changes.
+
+  ```elixir
+  def handle_params(_params, uri, socket) do
+    %URI{query: query} = URI.parse(uri)
+    nav = DataTable.NavState.decode_query_string(query)
+    socket = assign(socket, :nav, nav)
+    {:noreply, socket}
+  end
+  ```
+
+  The decoded `NavState` is assigned to the `:nav` assign, which we need to
+  forward to our `DataTable`.
+
+  ```elixir
+  <DataTable.live_data_table
+    [...]
+    nav={@nav}/>
+  ```
+
+  At this point you should be able to add a query string to your liveview
+  (like `?page=5`), and see it being applied to the `DataTable` on load,
+  but the query string will not yet update on changes.
+
+  ### 2. `NavState` -> query string
+  The `handle_nav` callback is called whenever the nav state of the `DataTable`
+  changes. Here we use it to send a message to our LiveView.
+
+  ```elixir
+  <DataTable.live_data_table
+    [...]
+    nav={@nav}
+    handle_nav={fn nav -> send(self(), {:nav, nav}) end}/>
+  ```
+
+  We also need to handle `{:nav, nav}` message and push the changes to the URL.
+
+  ```elixir
+  def handle_info({:nav, nav}, socket) do
+    query = DataTable.NavState.encode_query_string(nav)
+    socket =
+      socket
+      |> push_patch(to: ~p"/my/live/view" <> query, replace: true)
+      |> assign(:nav, nav) # Important!
+    {:noreply, socket}
+  end
+  ```
+
+  Notice that we also assign the received `nav` to our `:nav` assign. This is
+  important so that the latest state is always passed to our `DataTable`.
+
+  At this point you should be able to navigate the DataTable, see the query
+  string update, and see the changes persist on refresh.
   """
 
   @type t :: %__MODULE__{}
