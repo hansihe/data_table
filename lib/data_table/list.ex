@@ -5,7 +5,7 @@ defmodule DataTable.List do
 
   @behaviour DataTable.Source
 
-  alias DataTable.Source.{Query, Result}
+  alias DataTable.Source.Result
 
   @impl true
   def query({list, config}, query) do

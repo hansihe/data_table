@@ -2,6 +2,8 @@ defmodule DataTable.LiveComponent do
   @moduledoc false
   use Phoenix.LiveComponent
 
+  alias __MODULE__.Filters
+
   defp id_to_string(id) when is_binary(id), do: id
 
   def render(assigns) do
@@ -313,8 +315,8 @@ defmodule DataTable.LiveComponent do
 
       static = socket.assigns.static
 
-      filters = %DataTable.Filters{}
-      filters_changeset = DataTable.Filters.changeset2(filters, static.filter_columns, %{})
+      filters = %Filters{}
+      filters_changeset = Filters.changeset(filters, static.filter_columns, %{})
       filters_form = Phoenix.Component.to_form(filters_changeset)
 
       socket
@@ -512,8 +514,8 @@ defmodule DataTable.LiveComponent do
     filters_changes = params["filters"] || %{}
 
     changeset =
-      %DataTable.Filters{}
-      |> DataTable.Filters.changeset2(static.filter_columns, filters_changes)
+      %Filters{}
+      |> Filters.changeset(static.filter_columns, filters_changes)
       |> add_filter_defaults(static)
 
     socket =
@@ -587,7 +589,7 @@ defmodule DataTable.LiveComponent do
       end)
     }
 
-    DataTable.Filters.changeset2(changeset, assigns.filter_columns, changes)
+    Filters.changeset(changeset, assigns.filter_columns, changes)
   end
 
   def cycle_sort(sort_state, field) do

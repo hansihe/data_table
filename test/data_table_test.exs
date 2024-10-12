@@ -2,12 +2,10 @@ defmodule DataTableTest do
   use ExUnit.Case
   doctest DataTable
 
-  import Plug.Conn
-  import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   @endpoint DataTable.TestEndpoint
 
-  setup tags do
+  setup _tags do
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 
@@ -58,7 +56,7 @@ defmodule DataTableTest do
   end
 
   test "sort cycling works", %{conn: conn} do
-    {:ok, view, html} = live_isolated(conn, DataTable.TestLive)
+    {:ok, view, _html} = live_isolated(conn, DataTable.TestLive)
 
     assert has_element?(view, "th.column-header a.sort-toggle")
     assert not has_element?(view, "th.column-header span.sort_asc")
