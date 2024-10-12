@@ -1,5 +1,7 @@
 # DataTable
 
+[Docs](https://hexdocs.pm/data_table/DataTable.html)
+
 A flexible DataTable component for LiveView.
 
 ![Screenshot of simple DataTable usage](screenshot.png "Simple DataTable usage")
@@ -53,31 +55,20 @@ end
 ```
 
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `data_table` to your list of dependencies in `mix.exs`:
+First you need to add `data_table` to your `mix.exs`:
 
 ```elixir
-def deps do
+defp deps do
   [
-    {:data_table, "~> 0.1.0"}
+    {:data_table, "~> 1.0}
   ]
 end
 ```
 
-### Tailwind Theme
-If using the `Tailwind` theme, you must have tailwind set up for your app.
-You must also:
-* Configure tailwind to generate styles for the `data_table` dependency
-* Include the `petal_components` css in your app
+If you want to use the default `Tailwind` theme, you need to set up `tailwind` to include styles
+from the `data_table` dependency.
 
 Add this to the `content` list in your `assets/tailwind.js`:
 ```js
-"../deps/petal_components/**/*.*ex",
 "../deps/data_table/**/*.*ex"
-```
-
-Add this to the end of your `assets/css/base.css`:
-```scss
-@import "../../deps/petal_components/assets/default.css";
 ```

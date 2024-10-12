@@ -48,7 +48,6 @@ defmodule DataTable do
   ```elixir
   defp deps do
     [
-      [...]
       {:data_table, "~> 1.0}
     ]
   end
