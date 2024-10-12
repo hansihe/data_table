@@ -1,4 +1,15 @@
 defmodule DataTable.NavState do
+  @moduledoc """
+  The `NavState` struct contains the navigation state of a `DataTable`.
+
+  The `NavState` can be optionally serialized and deserialized to a query string.
+
+  Contains the following pieces of UI state:
+  * Current page
+  * Active sort
+  * Active filters
+  """
+
   @type t :: %__MODULE__{}
 
   defstruct [
@@ -8,6 +19,9 @@ defmodule DataTable.NavState do
     page: 0,
   ]
 
+  @type kv :: [{key :: String.t(), value :: String.t()}]
+
+  @spec encode(nav_state :: t()) :: kv()
   def encode(nav_state) do
     filter_params =
       nav_state.filters
@@ -34,6 +48,7 @@ defmodule DataTable.NavState do
     ])
   end
 
+  @spec encode_query_string(nav_state :: t()) :: String.t()
   def encode_query_string(nav_state) do
     nav_state
     |> encode()
@@ -44,6 +59,7 @@ defmodule DataTable.NavState do
     end
   end
 
+  @spec decode(base_nav_state :: t(), components :: kv()) :: t()
   def decode(nav_state \\ %__MODULE__{}, query) do
     components =
       Enum.flat_map(query, fn {k, v} ->
@@ -74,6 +90,7 @@ defmodule DataTable.NavState do
     end)
   end
 
+  @spec decode_query_string(base_nav_state :: t(), query_string :: String.t()) :: t()
   def decode_query_string(nav_state \\ %__MODULE__{}, query_string) do
     query_string = case query_string do
       "?" <> str -> str
@@ -81,7 +98,6 @@ defmodule DataTable.NavState do
     end
 
     query = Enum.to_list(URI.query_decoder(query_string || ""))
-    IO.inspect(query)
     decode(nav_state, query)
   end
 

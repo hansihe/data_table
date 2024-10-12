@@ -1,9 +1,13 @@
 defmodule DataTable.LiveComponent.Filters do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 
   embedded_schema do
     embeds_many :filters, Filter, on_replace: :delete do
+      @moduledoc false
+
       field :field, :string
       field :op, :string
       field :value, :string

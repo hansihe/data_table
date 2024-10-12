@@ -6,15 +6,15 @@ defmodule DataTable.Ecto do
     require Ecto.Query
 
     dyn_select =
-      query_params.columns
+      query_params.fields
       |> Enum.map(fn col_id ->
-        {col_id, Map.fetch!(query.columns, col_id)}
+        {col_id, Map.fetch!(query.fields, col_id)}
       end)
       |> Enum.into(%{})
 
     base_ecto_query = Enum.reduce(query_params.filters, query.base, fn filter, acc ->
       filter_type = Map.fetch!(query.filters, filter.field)
-      field_dyn = Map.fetch!(query.columns, filter.field)
+      field_dyn = Map.fetch!(query.fields, filter.field)
 
       value = case filter_type do
         :integer ->
@@ -37,7 +37,7 @@ defmodule DataTable.Ecto do
     end)
 
     ecto_query = maybe_apply(base_ecto_query, query_params, fn ecto_query, {field, dir} ->
-      field_dyn = Map.fetch!(query.columns, field)
+      field_dyn = Map.fetch!(query.fields, field)
       Ecto.Query.order_by(ecto_query, ^[{dir, field_dyn}])
     end)
 
@@ -76,7 +76,7 @@ defmodule DataTable.Ecto do
   end
 
   @impl true
-  def filterable_columns({_repo, query}) do
+  def filterable_fields({_repo, query}) do
     query.filters
     |> Enum.map(fn {col_id, type} ->
       %{

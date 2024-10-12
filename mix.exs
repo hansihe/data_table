@@ -9,7 +9,10 @@ defmodule DataTable.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+
+      name: "DataTable",
+      docs: docs()
     ]
   end
 
@@ -27,6 +30,36 @@ defmodule DataTable.MixProject do
       links: %{
         "GitHub" => "https://github.com/hansihe/data_table"
       }
+    ]
+  end
+
+  defp docs do
+    [
+      extra_section: "GUIDES",
+      extras: [
+        "guides/cheatsheets/data_table_component_cheatsheet.cheatmd"
+      ],
+      groups_for_extras: [
+        Cheatsheets: ~r/cheatsheets\/.?/,
+      ],
+      groups_for_modules: [
+        Sources: [
+          DataTable.Ecto,
+          DataTable.Ecto.Query,
+          DataTable.List,
+          DataTable.List.Config
+        ],
+        "Source Behaviour": [
+          DataTable.Source,
+          DataTable.Source.Query,
+          DataTable.Source.Result
+        ],
+        Themes: [
+          DataTable.Theme.Tailwind,
+          DataTable.Theme.Basic,
+          DataTable.Theme.Util
+        ]
+      ]
     ]
   end
 

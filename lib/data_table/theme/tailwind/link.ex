@@ -1,4 +1,6 @@
 defmodule DataTable.Theme.Tailwind.Link do
+  @moduledoc false
+
   use Phoenix.Component
 
   attr :class, :any, default: nil, doc: "CSS class for link (either a string or list)"

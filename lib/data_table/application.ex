@@ -1,4 +1,6 @@
 defmodule DataTable.Application do
+  @moduledoc false
+
   use Application
 
   if Mix.env() == :dev_server do

@@ -23,7 +23,7 @@ defmodule DataTable.List do
   end
 
   @impl true
-  def filterable_columns({_list, _config}) do
+  def filterable_fields({_list, _config}) do
     []
   end
 

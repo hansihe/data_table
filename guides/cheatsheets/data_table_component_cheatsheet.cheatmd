@@ -1,0 +1,69 @@
+# DataTable Component
+
+## Declaring columns
+
+#### Declaring a column
+The `name` attribute is rendered in the header, the contents
+are rendered for each row.
+
+```elixir
+<:col name="Visual name of column">
+  HTML content
+</:col>
+```
+
+#### Displaying data
+Some `Source`s (like `DataTable.Ecto`) only fetch data which is
+requested by visible columns.
+
+```elixir
+<:col name="Row Id" fields={[:id]} :let={row}>
+  <%= row.id %>
+</:col>
+```
+
+#### Sorting
+You can enable sorting by a source field. Clicking the header will cycle sorting
+for this field.
+
+```elixir
+<:col name="Id" sort_field={:id}>
+[...]
+```
+
+#### Visibility
+Columns are visible by default. Default visibility can be changed with the `visible` attribute.
+
+```elixir
+<:col name="Id" visible={false}>
+[...]
+```
+
+## Row decorations
+
+#### Expandable rows
+```elixir
+<:row_expanded fields={[:id, :name]} :let={row}>
+  Expanded content, hello <%= row.name %> with id <%= row.id %>
+</:row_expanded>
+```
+When added, rows will get an expand button.
+Can only be declared once.
+
+#### Row buttons
+```elixir
+<:row_buttons fields={[:id]} :let={row}>
+  Inner content
+</:row_buttons>
+```
+The `row_buttons` slot is rendered all the way to the right of each row.
+Can only be declared once.
+
+## Selections
+
+#### Selection actions
+```elixir
+<:selection_action label="Action name" handle_action={callback}/>
+```
+If specified, a selection box is added to each row.
+When rows are selected, a dropdown appears and allows you to trigger selection actions.

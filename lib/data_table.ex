@@ -1,5 +1,28 @@
 defmodule DataTable do
   @moduledoc """
+  DataTable is a flexible and interactive table component for LiveView.
+
+  [DataTable Component Cheat Sheet](data_table_component_cheatsheet.html)
+
+  ## Data model
+
+  Some terms you should know when using the library:
+
+  * Source - A module implementing the DataTable.Source behaviour. A Source
+    provides data to the DataTable component in a pluggable way.
+    Examples of built-in sources are: DataTable.Ecto, DataTable.List
+  * Data Row - A single row of data returned from the Source.
+  * Data Field - A column of data returned from the Source. Example: In a
+    database table, this might be a single field like "first_name" or "email".
+  * Table Column - A column displayed in the table. A Table Field may combine or
+    transform data from one or more Data Columns. Example: A "full_name" Table Field
+    might combine "first_name" and "last_name" Data Columns.
+
+  Note: Internally, Data Fields are referred to simply as "fields", while Table Columns
+  are called "columns".
+
+  To summarize, a *Source* provides *Data Fields* which are then mapped to *Table Columns*
+  for display in the *DataTable* component.
   """
 
   use Phoenix.LiveComponent

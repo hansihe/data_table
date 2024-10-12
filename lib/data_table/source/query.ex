@@ -28,7 +28,7 @@ defmodule DataTable.Source.Query do
   # ]
 
   defstruct [
-    columns: [],
+    fields: [],
     filters: [],
     sort: nil,
     offset: 0,

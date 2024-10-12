@@ -39,14 +39,14 @@ defmodule DataTable.LiveComponent do
         }
       end)
 
-    %{
+    %DataTable.Source.Query{
       filters: filters,
       sort: socket.assigns.sort,
       offset: socket.assigns.page * socket.assigns.page_size,
       limit: socket.assigns.page_size,
-      columns: columns,
+      fields: columns,
 
-      shown_fields: socket.assigns.shown_fields,
+      #shown_fields: socket.assigns.shown_fields,
     }
   end
 
@@ -87,7 +87,7 @@ defmodule DataTable.LiveComponent do
       |> Enum.map(fn %{label: label, handle_action: action} -> {label, action} end)
       |> Enum.with_index()
 
-    filterable_columns = DataTable.Source.filterable_columns(source)
+    filterable_columns = DataTable.Source.filterable_fields(source)
     filter_types = DataTable.Source.filter_types(source)
     id_field = DataTable.Source.key(source)
 

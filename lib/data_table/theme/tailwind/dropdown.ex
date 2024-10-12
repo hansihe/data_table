@@ -1,4 +1,6 @@
 defmodule DataTable.Theme.Tailwind.Dropdown do
+  @moduledoc false
+
   use Phoenix.Component
   alias Phoenix.LiveView.JS
   alias DataTable.Theme.Tailwind.Heroicons

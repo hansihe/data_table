@@ -1,4 +1,6 @@
 defmodule DataTable.Theme.Tailwind.Components do
+  @moduledoc false
+
   use Phoenix.Component
 
   attr :state, :atom

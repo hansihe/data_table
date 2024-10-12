@@ -1,0 +1,11 @@
+[
+  {
+    "label": "Build Docs",
+    "command": "mix docs",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "hide": "on_success",
+    "shell": "system"
+  }
+]

@@ -1,4 +1,6 @@
 defmodule DataTable.Theme.Tailwind.Heroicons do
+  @moduledoc false
+
   use Phoenix.Component
 
   # Vendored from https://github.com/mveytsman/heroicons_elixir/blob/afb57ff3e181fbcf55c68ff64a0e7f1d339a07d4/lib/heroicons.ex
