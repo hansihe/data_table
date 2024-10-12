@@ -1,4 +1,60 @@
 defmodule DataTable.Ecto.Query do
+  @moduledoc """
+  DSL used to declare queries for use with the `DataTable.Ecto` source.
+
+  ```elixir
+  def mount(_params, _session, socket) do
+    query = DataTable.Ecto.Query.from(
+      user in MyApp.User,
+      fields: %{
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name
+      },
+      key: :id,
+      default_order_by: user.id
+    )
+
+    socket = assign(socket, :source_query, query)
+
+    [...]
+  end
+  ```
+
+  For a description of the differences between `Ecto.Query.from/2` and `from/2`,
+  see the docs of `from/2`.
+
+  ## On joins and complex queries
+  Since `field`s are only actually requested from the Database when a column
+  in the `DataTable` actually needs them, you can make your query join several
+  tables and only pay the price when the columns actually are rendered.
+
+  This is very useful for admin interfaces where you want to make many pieces of
+  information available, but not necessarily need them shown by default.
+
+  As an example, in a query like:
+  ```elixir
+  DataTable.Ecto.Query.from(
+    article in Model.Article,
+    left_join: category in assoc(article, :category),
+    left_join: user in assoc(article, :author),
+    fields: %{
+      title: article.title,
+      body: article.body,
+      category_name: category.name,
+      author_name: author.name
+    },
+    key: :id
+  )
+  ```
+
+  As long as the columns in your table which use `category` and `author_name` are not
+  visible, those will not be fetched by the database, and the database will likely not
+  even bother doing the joins in its query plan.
+
+  The same also applies to subqueries, aggregations, etc. You should not be scared of
+  including optional columns in your table for admin interfaces.
+  """
 
   defstruct [
     base: nil,
@@ -38,13 +94,34 @@ defmodule DataTable.Ecto.Query do
           :inner_lateral_join, :left_lateral_join]
 
   @doc """
-  Functions exactly like `Ecto.Query.from/2`, but with some minor modifications:
-  * The `:fields` key is used instead of `select` and `select_merge`
-  * `select` and `select_merge` are not accepted
-  * You can specify which column will be used as the id using the `:id` keyword
-  * Filterable fields are specified using `filters`
+  Functions exactly like `Ecto.Query.from/2`, but with some minor differences:
 
-  ## Filters
+  * `:select` and `:select_merge` are not accepted.
+    * `:fields` is used instead.
+  * `:key` is required. `:key` should be the name of a field which uniquely
+    identifies each row.
+  * `:order_by` is not accepted, as ordering is determined by the user when
+    using the table.
+    * `:default_order_by` can be used to specify a default.
+
+  # Arguments
+
+  ## `:fields` argument
+  Used to indicate which fields are fetchable by the table.
+
+  Let's compare it to `Ecto.Query.from/2`s `:select`:
+  * `:fields` fetch data only when the  `DataTable` requests the field.
+    * `:select` always fetches data.
+  * `:fields` can only be a map as the root.
+    * `:select` is more flexible with the structures you can return.
+
+  ## `:key` argument
+  The `:key` argument is always required, and is used to specify a key in
+  `:fields` which uniquely identitifes the row.
+
+  ## `:default_order_by` argument
+  Specifies a ordering which is overridden when the `DataTable` explicitly
+  sets a sort.
   """
   defmacro from(expr, kw \\ []) do
     require Ecto.Query

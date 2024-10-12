@@ -40,6 +40,7 @@ defmodule DataTable do
 
   ## Common Tasks
   * [Cheat Sheet for DataTable Component](data_table_component_cheatsheet.html)
+  * [Using the Ecto source](DataTable.Ecto.html)
   * [Setting up query string navigation](DataTable.NavState.html#module-persisting-datatable-state-in-query-string)
 
   ## Getting started

@@ -1,4 +1,40 @@
 defmodule DataTable.Ecto do
+  @moduledoc """
+  This module implements a `DataTable.Source` which fetches data from
+  an ecto `Repo`.
+
+  You need to pass it two arguments, a Repo and a Query:
+  ```elixir
+  <DataTable.live_data_table
+    [...]
+    source={{DataTable.Ecto, {MyApp.Repo, @source_query}}}/>
+  ```
+
+  The repo is a normal `Ecto.Repo`, while the query is a query defined
+  using the DSL in `DataTable.Ecto.Query`.
+
+  You usually create your query in the `mount/3` callback of your `LiveView`:
+
+  ```elixir
+  def mount(_params, _session, socket) do
+    query = DataTable.Ecto.Query.from(
+      user in MyApp.User,
+      fields: %{
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name
+      },
+      key: :id
+    )
+
+    socket = assign(socket, :source_query, query)
+
+    [...]
+  end
+  ```
+
+  See `DataTable.Ecto.Query` for a full description of the query DSL.
+  """
   @behaviour DataTable.Source
 
   @impl true
