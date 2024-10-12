@@ -2,7 +2,7 @@ defmodule DataTable.Ecto.Query do
 
   defstruct [
     base: nil,
-    columns: %{},
+    fields: %{},
     key: nil,
     filters: [],
     default_order_by: nil
@@ -39,17 +39,17 @@ defmodule DataTable.Ecto.Query do
 
   @doc """
   Functions exactly like `Ecto.Query.from/2`, but with some minor modifications:
-  * The `:columns` key is used instead of `select` and `select_merge`
+  * The `:fields` key is used instead of `select` and `select_merge`
   * `select` and `select_merge` are not accepted
   * You can specify which column will be used as the id using the `:id` keyword
-  * Filterable columns are specified using `filters`
+  * Filterable fields are specified using `filters`
 
   ## Filters
   """
   defmacro from(expr, kw \\ []) do
     require Ecto.Query
 
-    columns = Keyword.fetch!(kw, :columns)
+    fields = Keyword.fetch!(kw, :fields)
     key = Keyword.fetch!(kw, :key)
     default_order_by = Keyword.get(kw, :default_order_by)
 
@@ -57,13 +57,13 @@ defmodule DataTable.Ecto.Query do
       Keyword.fetch!(kw, :filters)
       |> unescape_literal(__CALLER__)
 
-    kw = Keyword.drop(kw, [:columns, :key, :filters, :default_order_by])
+    kw = Keyword.drop(kw, [:fields, :key, :filters, :default_order_by])
 
     if Keyword.has_key?(kw, :select) do
-      Ecto.Query.Builder.error!("`:select` key is not supported in `DataTable.Ecto.from/2`. Use `:columns` instead.")
+      Ecto.Query.Builder.error!("`:select` key is not supported in `DataTable.Ecto.from/2`. Use `:fields` instead.")
     end
     if Keyword.has_key?(kw, :select_merge) do
-      Ecto.Query.Builder.error!("`:select_merge` key is not supported in `DataTable.Ecto.from/2`. Use `:columns` instead.")
+      Ecto.Query.Builder.error!("`:select_merge` key is not supported in `DataTable.Ecto.from/2`. Use `:fields` instead.")
     end
     if Keyword.has_key?(kw, :order_by) do
       Ecto.Query.Builder.error!("`:order_by` key will override table sorts when used in a DataTable query. Use `:default_order_by` instead.")
@@ -90,14 +90,14 @@ defmodule DataTable.Ecto.Query do
       |> Enum.map(fn {var, _num} -> var end)
       |> Enum.map(fn var -> {var, [], nil} end)
 
-    columns_dyn_map = process_columns(binds_expr, columns)
+    fields_dyn_map = process_fields(binds_expr, fields)
     order_by = process_order_by(binds_expr, default_order_by)
 
     quote do
       require Ecto.Query
       %DataTable.Ecto.Query{
         base: Ecto.Query.from(unquote(expr), unquote(kw)),
-        columns: unquote(columns_dyn_map),
+        fields: unquote(fields_dyn_map),
         key: unquote(key),
         filters: unquote(Macro.escape(filters)),
         default_order_by: unquote(order_by)
@@ -105,18 +105,18 @@ defmodule DataTable.Ecto.Query do
     end
   end
 
-  defmacro columns(query, binding \\ [], expr) do
-    columns = process_columns(binding, expr)
+  defmacro fields(query, binding \\ [], expr) do
+    fields = process_fields(binding, expr)
 
     quote do
-      columns = unquote(columns)
+      fields = unquote(fields)
       case unquote(query) do
-        query = %DataTable.Ecto.Query{columns: nil} -> %{query | columns: columns}
-        %DataTable.Ecto.Query{} -> raise "`:columns` already set in `DataTable.Ecto.Query`"
+        query = %DataTable.Ecto.Query{fields: nil} -> %{query | fields: fields}
+        %DataTable.Ecto.Query{} -> raise "`:fields` already set in `DataTable.Ecto.Query`"
         query = %Ecto.Query{} ->
           %DataTable.Ecto.Query{
             base: query,
-            columns: columns
+            fields: fields
           }
       end
     end
@@ -152,28 +152,28 @@ defmodule DataTable.Ecto.Query do
     end
   end
 
-  defp process_columns(binds, columns) do
-    columns =
-      case columns do
+  defp process_fields(binds, fields) do
+    fields =
+      case fields do
         {:%{}, _opts, kws} ->
           Enum.each(kws, fn
             {key, _val} when is_atom(key) -> nil
-            _ -> Ecto.Query.Builder.error!("`:columns` must only contain literal atom keys")
+            _ -> Ecto.Query.Builder.error!("`:fields` must only contain literal atom keys")
           end)
           Enum.into(kws, %{})
 
         _ ->
-          Ecto.Query.Builder.error!("`:columns` clause must contain a map")
+          Ecto.Query.Builder.error!("`:fields` clause must contain a map")
       end
 
-    columns_dyn_list = Enum.map(columns, fn {name, val} ->
+    fields_dyn_list = Enum.map(fields, fn {name, val} ->
       dyn_val = quote do
         Ecto.Query.dynamic(unquote(binds), unquote(val))
       end
       {name, dyn_val}
     end)
 
-    {:%{}, [], columns_dyn_list}
+    {:%{}, [], fields_dyn_list}
   end
 
   @valid_orderings [:asc, :asc_nulls_last, :asc_nulls_first, :desc, :desc_nulls_last, :desc_nulls_first]

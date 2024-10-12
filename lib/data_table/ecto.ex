@@ -36,7 +36,7 @@ defmodule DataTable.Ecto do
       Ecto.Query.where(acc, ^where_dyn)
     end)
 
-    ecto_query = maybe_apply(base_ecto_query, query_params, fn ecto_query, {field, dir} ->
+    ecto_query = maybe_apply(base_ecto_query, query_params.sort, fn ecto_query, {field, dir} ->
       field_dyn = Map.fetch!(query.fields, field)
       Ecto.Query.order_by(ecto_query, ^[{dir, field_dyn}])
     end)

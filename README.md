@@ -23,7 +23,7 @@ def render(assigns) do
   ~H"""
   <DataTable.live_data_table
     id="table"
-    source={{DataTable.Ecto.Source, {MyApp.Repo, @source_query}}}>
+    source={{DataTable.Ecto, {MyApp.Repo, @source_query}}}>
 
     <:col :let={row} name="Id" fields={[:id]} sort_field={:id}>
       <%= row.id %>
