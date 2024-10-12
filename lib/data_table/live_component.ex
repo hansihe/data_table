@@ -207,7 +207,6 @@ defmodule DataTable.LiveComponent do
     assigns = socket.assigns
     static = assigns.static
 
-    page_idx = assigns.page
     page_size = 20 # spec.page_size
 
     assign(socket, %{
@@ -251,7 +250,6 @@ defmodule DataTable.LiveComponent do
       end),
 
       # Pagination
-      page_idx: page_idx,
       page_size: page_size,
 
       # Slots
@@ -268,7 +266,7 @@ defmodule DataTable.LiveComponent do
     assigns = socket.assigns
     static = assigns.static
 
-    page_idx = assigns.page_idx
+    page_idx = assigns.page
     page_size = assigns.page_size
     total_results = assigns.total_results
     max_page = div(total_results + (page_size - 1), page_size) - 1
@@ -349,25 +347,19 @@ defmodule DataTable.LiveComponent do
     socket = assign(socket, copy_assigns)
 
     # Update nav state if present
-    #new_nav = assigns[:nav]
-    #socket =
-    #  if nav != nil and new_nav != old_nav do
-
-    #  else
-    #    socket
-    #  end
-
-    #socket = if nav != nil do
-    #  if nav != socket.assigns.dispatched_nav do
-    #    socket.assigns.handle_nav.(nav)
-    #  end
-
-    #  socket
-    #  |> assign(:nav, nav)
-    #  |> do_query()
-    #else
-    #  socket
-    #end
+    new_nav = assigns[:nav]
+    dispatched_nav = socket.assigns.dispatched_nav
+    # Nav state is only updated if it has changed since the last dispatch.
+    # This prevents a secondary DOM update after the nav state makes the round
+    # trip to the query string.
+    socket =
+      if new_nav != nil and new_nav != dispatched_nav do
+        socket
+        |> nav_to_state(new_nav)
+        |> do_query()
+      else
+        socket
+      end
 
     socket = assign_query_render_data(socket)
 
@@ -408,6 +400,7 @@ defmodule DataTable.LiveComponent do
       |> assign_base_render_data()
       |> do_query()
       |> assign_query_render_data()
+      |> dispatch_handle_nav()
 
     {:noreply, socket}
   end
@@ -436,6 +429,7 @@ defmodule DataTable.LiveComponent do
       |> assign_base_render_data()
       |> do_query()
       |> assign_query_render_data()
+      |> dispatch_handle_nav()
 
     {:noreply, socket}
   end
@@ -516,33 +510,39 @@ defmodule DataTable.LiveComponent do
     changeset =
       %Filters{}
       |> Filters.changeset(static.filter_columns, filters_changes)
-      |> add_filter_defaults(static)
 
     socket =
-      case Ecto.Changeset.apply_action(changeset, :insert) do
-        {:ok, data} ->
-          socket = assign(socket, :filters, data)
-
-          socket
-          |> assign_base_render_data()
-          |> do_query()
-          |> assign_query_render_data()
-          |> assign(%{
-            filters_changeset: changeset,
-            filters_form: to_form(changeset)
-          })
-
-        {:error, changeset} ->
-          socket = assign(socket, %{
-            filters_changeset: changeset,
-            filters_form: to_form(changeset)
-          })
-          assign(socket, :filters_form, to_form(changeset))
-      end
-
-    socket = dispatch_handle_nav(socket)
+      socket
+      |> apply_filters_changeset(changeset)
+      |> dispatch_handle_nav()
 
     {:noreply, socket}
+  end
+
+  def apply_filters_changeset(socket, changeset) do
+    static = socket.assigns.static
+    changeset = add_filter_defaults(changeset, static)
+
+    case Ecto.Changeset.apply_action(changeset, :insert) do
+      {:ok, data} ->
+        socket = assign(socket, :filters, data)
+
+        socket
+        |> assign_base_render_data()
+        |> do_query()
+        |> assign_query_render_data()
+        |> assign(%{
+          filters_changeset: changeset,
+          filters_form: to_form(changeset)
+        })
+
+      {:error, changeset} ->
+        socket = assign(socket, %{
+          filters_changeset: changeset,
+          filters_form: to_form(changeset)
+        })
+        assign(socket, :filters_form, to_form(changeset))
+    end
   end
 
   def nav_from_state(socket) do
@@ -553,24 +553,58 @@ defmodule DataTable.LiveComponent do
         {field, op, value}
       end),
       sort: socket.assigns.sort,
-      page: socket.assigns.page
+      page: socket.assigns.page + 1
     }
+  end
+
+  def nav_to_state(socket, nav) do
+    assigns = socket.assigns
+
+    socket =
+      if MapSet.member?(nav.set, :filters) do
+        changes = %{
+          "filters" =>
+            nav.filters
+            |> Enum.map(fn {field, op, value} ->
+              %{"field" => field, "op" => op, "value" => value}
+            end)
+        }
+
+        changeset = Filters.changeset(%Filters{}, assigns.static.filter_columns, changes)
+        apply_filters_changeset(socket, changeset)
+      else
+        socket
+      end
+
+    socket =
+      if MapSet.member?(nav.set, :sort) do
+        assign(socket, :sort, nav.sort)
+      else
+        socket
+      end
+
+    socket =
+      if MapSet.member?(nav.set, :page) do
+        assign(socket, :page, max(nav.page - 1, 0))
+      else
+        socket
+      end
+
+    socket
   end
 
   def dispatch_handle_nav(socket) do
     handle_nav = socket.assigns.handle_nav
+
     if handle_nav != nil do
       new_nav = nav_from_state(socket)
 
       if new_nav != socket.assigns.dispatched_nav do
         handle_nav.(new_nav)
-        assign(socket, :dispatched_nav, new_nav)
-      else
-        socket
       end
-    else
-      socket
     end
+
+    assign(socket, :dispatched_nav, new_nav)
   end
 
   def add_filter_defaults(changeset, assigns) do

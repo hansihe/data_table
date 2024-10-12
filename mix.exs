@@ -35,6 +35,7 @@ defmodule DataTable.MixProject do
 
   defp docs do
     [
+      main: "DataTable",
       extra_section: "GUIDES",
       extras: [
         "guides/cheatsheets/data_table_component_cheatsheet.cheatmd"

@@ -29,7 +29,7 @@ defmodule DataTable.NavState do
         {"filter[#{filter}]#{op}", value || ""}
       end)
 
-    page_params = if nav_state.page == 0 do
+    page_params = if nav_state.page == 1 do
       []
     else
       [{"page", nav_state.page}]
@@ -68,13 +68,18 @@ defmodule DataTable.NavState do
             [{:filter, {field, op, v}}]
 
           {"asc", _} ->
-            {:sort, {v, :asc}}
+            field = String.to_existing_atom(v)
+            [{:sort, {field, :asc}}]
 
           {"desc", _} ->
-            {:sort, {v, :desc}}
+            field = String.to_existing_atom(v)
+            [{:sort, {field, :desc}}]
 
           {"page", _} ->
-            [{:page, v}]
+            case Integer.parse(v) do
+              {page, ""} -> [{:page, page}]
+              _ -> []
+            end
 
           _ -> []
         end

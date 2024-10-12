@@ -13,10 +13,8 @@ Some of the features the component has:
 * Row selection with customizable bulk actions
 * Data is fetched from `DataTable.Source` behaviour, usable with custom data sources
 * First class Ecto `Source`
-* Support for persisting sort/filter state to query string (R)
+* Support for persisting sort/filter state to query string
 * Tailwind theme included, but fully customizable
-
-Rows marked with R are currently undergoing a refactor, and are rough around the edges.
 
 ```elixir
 def render(assigns) do

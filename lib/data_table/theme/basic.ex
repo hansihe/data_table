@@ -99,9 +99,9 @@ defmodule DataTable.Theme.Basic do
               </div>
 
               <nav class="pagination-buttons">
-                <% pages = Util.generate_pages(@page_idx, @page_size, @total_results) %>
+                <% pages = Util.generate_pages(@page, @page_size, @total_results) %>
 
-                <a :if={@has_prev} class="prev" phx-click="change-page" phx-value-page={@page_idx - 1} phx-target={@target}>
+                <a :if={@has_prev} class="prev" phx-click="change-page" phx-value-page={@page - 1} phx-target={@target}>
                   Previous Page
                 </a>
 
@@ -110,7 +110,7 @@ defmodule DataTable.Theme.Basic do
                   <span :if={current}>(current)</span>
                 </a>
 
-                <a :if={@has_next} class="next" phx-click="change-page" phx-value-page={@page_idx + 1} phx-target={@target}>
+                <a :if={@has_next} class="next" phx-click="change-page" phx-value-page={@page + 1} phx-target={@target}>
                   Next Page
                 </a>
               </nav>

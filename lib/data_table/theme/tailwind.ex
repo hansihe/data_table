@@ -134,7 +134,7 @@ defmodule DataTable.Theme.Tailwind do
                   page_start_item={@page_start_item}
                   page_end_item={@page_end_item}
                   total_results={@total_results}
-                  page_idx={@page_idx}
+                  page={@page}
                   page_size={@page_size}
                   target={@target}
                   has_prev={@has_prev}
@@ -305,9 +305,9 @@ defmodule DataTable.Theme.Tailwind do
               </p>
             </div>
             <div>
-              <% pages = Util.generate_pages(@page_idx, @page_size, @total_results) %>
+              <% pages = Util.generate_pages(@page, @page_size, @total_results) %>
               <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                <a :if={@has_prev} phx-click="change-page" phx-target={@target} phx-value-page={@page_idx - 1} class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
+                <a :if={@has_prev} phx-click="change-page" phx-target={@target} phx-value-page={@page - 1} class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
                   <span class="sr-only">Previous</span>
                   <Heroicons.chevron_left mini={true} class="h-5 w-5"/>
                 </a>
@@ -331,7 +331,7 @@ defmodule DataTable.Theme.Tailwind do
                   <%= page_num + 1 %>
                 </a>
 
-                <a :if={@has_next} phx-click="change-page" phx-target={@target} phx-value-page={@page_idx + 1} class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
+                <a :if={@has_next} phx-click="change-page" phx-target={@target} phx-value-page={@page + 1} class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:cursor-pointer focus:z-20">
                   <span class="sr-only">Next</span>
                   <Heroicons.chevron_right mini={true} class="h-5 w-5"/>
                 </a>
