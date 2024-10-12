@@ -24,7 +24,7 @@ defmodule DataTable do
   def mount(_params, _session, socket) do
     query = DataTable.Ecto.Query.from(
       user in MyApp.User,
-      columns: %{
+      fields: %{
         id: user.id,
         first_name: user.first_name,
         last_name: user.last_name
