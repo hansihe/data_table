@@ -60,7 +60,7 @@ First you need to add `data_table` to your `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:data_table, "~> 1.0}
+    {:data_table, "~> 1.0"}
   ]
 end
 ```
