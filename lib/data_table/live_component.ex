@@ -479,13 +479,7 @@ defmodule DataTable.LiveComponent do
     id_col = DataTable.Source.key(source)
 
     query_params = make_query_params(socket)
-    query_params = %{
-      query_params |
-      shown_columns: [id_col],
-      sort: nil,
-      page: 0,
-      page_size: nil
-    }
+    query_params = %{query_params | sort: nil}
 
     evaluate_selection = fn ->
       %{ results: results } = DataTable.Source.query(source, query_params)
@@ -498,6 +492,7 @@ defmodule DataTable.LiveComponent do
     socket =
       socket
       |> assign_base_render_data()
+      |> do_query()
       |> assign_query_render_data()
 
     {:noreply, socket}
