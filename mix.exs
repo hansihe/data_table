@@ -10,7 +10,6 @@ defmodule DataTable.MixProject do
       deps: deps(),
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
-
       name: "DataTable",
       docs: docs()
     ]
@@ -41,7 +40,7 @@ defmodule DataTable.MixProject do
         "guides/cheatsheets/data_table_component_cheatsheet.cheatmd"
       ],
       groups_for_extras: [
-        Cheatsheets: ~r/cheatsheets\/.?/,
+        Cheatsheets: ~r/cheatsheets\/.?/
       ],
       groups_for_modules: [
         Sources: [
@@ -71,12 +70,10 @@ defmodule DataTable.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.7"},
-      {:phoenix_live_view, "~> 0.20"},
+      {:phoenix_live_view, "~> 1.0"},
       {:phoenix_ecto, "~> 4.6"},
       {:ecto, "~> 3.12"},
-
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-
       {:plug_cowboy, "~> 2.5", only: :dev_server},
       {:jason, "~> 1.2", only: [:dev_server, :test]},
       {:floki, ">= 0.30.0", only: :test}
