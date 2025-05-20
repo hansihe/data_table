@@ -8,7 +8,7 @@ defmodule DataTable.LiveComponent do
 
   @impl true
   def render(assigns) do
-    assigns.static.theme.root(assigns)
+    assigns.theme.root(assigns)
   end
 
   @impl true
@@ -19,6 +19,40 @@ defmodule DataTable.LiveComponent do
   @impl true
   def update(assigns, socket) do
     first = socket.assigns[:first] != false
+
+    selection_actions =
+      assigns.selection_action
+      |> Enum.map(fn %{label: label, handle_action: action} -> {label, action} end)
+      |> Enum.with_index()
+
+    # Changable data
+    socket =
+      assign(socket, %{
+        theme: assigns.theme,
+
+        # Selection
+        can_select:
+          selection_actions != nil and
+            selection_actions != [],
+        selection_actions:
+          Enum.map(selection_actions, fn {{name, action_fn}, idx} ->
+            %{
+              label: name,
+              action_idx: idx,
+              action_fn: action_fn
+            }
+          end),
+
+        # Slots
+        can_expand:
+          assigns.row_expanded != nil and
+            assigns.row_expanded != [],
+        row_expanded_slot: assigns.row_expanded,
+        has_row_buttons:
+          assigns.row_buttons != nil and
+            assigns.row_buttons != [],
+        row_buttons_slot: assigns.row_buttons
+      })
 
     socket =
       if first do
@@ -183,29 +217,10 @@ defmodule DataTable.LiveComponent do
 
   def handle_event("selection-action", %{"action-idx" => action_idx}, socket) do
     {action_idx, ""} = Integer.parse(action_idx)
-    %{action_fn: action_fn} = Enum.fetch!(socket.assigns.static.selection_actions, action_idx)
-
-    static = socket.assigns.static
-    source = static.source
-    id_col = DataTable.Source.key(source)
-
-    query_params = make_query_params(socket)
-
-    query_params = %{
-      query_params
-      | shown_columns: [id_col],
-        sort: nil,
-        page: 0,
-        page_size: nil
-    }
-
-    evaluate_selection = fn ->
-      %{results: results} = DataTable.Source.query(source, query_params)
-      Enum.map(results, fn fields -> Map.fetch!(fields, id_col) end)
-    end
+    %{action_fn: action_fn} = Enum.fetch!(socket.assigns.selection_actions, action_idx)
 
     selection = socket.assigns.selection
-    action_fn.(selection, evaluate_selection)
+    action_fn.(selection)
 
     socket =
       socket
@@ -304,11 +319,6 @@ defmodule DataTable.LiveComponent do
   defp assign_static_data(socket, comp_assigns) do
     source = comp_assigns.source
 
-    selection_actions =
-      comp_assigns.selection_action
-      |> Enum.map(fn %{label: label, handle_action: action} -> {label, action} end)
-      |> Enum.with_index()
-
     filterable_columns = DataTable.Source.filterable_fields(source)
     filter_types = DataTable.Source.filter_types(source)
     id_field = DataTable.Source.key(source)
@@ -328,21 +338,7 @@ defmodule DataTable.LiveComponent do
       end)
 
     static = %{
-      theme: comp_assigns.theme,
       source: source,
-
-      # Selection
-      can_select:
-        selection_actions != nil and
-          selection_actions != [],
-      selection_actions:
-        Enum.map(selection_actions, fn {{name, action_fn}, idx} ->
-          %{
-            label: name,
-            action_idx: idx,
-            action_fn: action_fn
-          }
-        end),
 
       # Fields
       fields: fields,
@@ -425,17 +421,7 @@ defmodule DataTable.LiveComponent do
             name: Atom.to_string(col.col_id),
             id_str: Atom.to_string(col.col_id)
           }
-        end),
-
-      # Slots
-      can_expand:
-        comp_assigns.row_expanded != nil and
-          comp_assigns.row_expanded != [],
-      row_expanded_slot: comp_assigns.row_expanded,
-      has_row_buttons:
-        comp_assigns.row_buttons != nil and
-          comp_assigns.row_buttons != [],
-      row_buttons_slot: comp_assigns.row_buttons
+        end)
     }
 
     assign(socket, :static, static)

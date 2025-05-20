@@ -21,13 +21,13 @@ defmodule DataTable.Theme.Basic do
         <thead>
           <tr>
             <!-- Checkbox cell is only visible if selection is enabled -->
-            <th :if={@static.can_select} class="selection">
+            <th :if={@can_select} class="selection">
               <.checkbox state={@header_selection} on_toggle="toggle-all" phx-target={@target}/>
             </th>
 
             <!-- Expand/contract cell is only visible if expansion is enabled -->
             <!-- Header row contains nothing. -->
-            <th :if={@static.can_expand}></th>
+            <th :if={@can_expand}></th>
 
             <!-- Render header cell for each visible column -->
             <th :for={field <- @header_fields} class="column-header">
@@ -52,12 +52,12 @@ defmodule DataTable.Theme.Basic do
           <%= for row <- @rows do %>
             <tr>
               <!-- Checkbox cell is only visible if selection is enabled -->
-              <td :if={@static.can_select} class="selection">
+              <td :if={@can_select} class="selection">
                 <.checkbox state={row.selected} on_toggle="toggle-row" phx-target={@target} phx-value-id={row.id}/>
               </td>
 
               <!-- Expand/contract cell is only visible if expansion is enabled -->
-              <td :if={@static.can_expand} class="expansion" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@target} phx-value-data-id={row.id}>
+              <td :if={@can_expand} class="expansion" phx-click={JS.push("toggle-expanded", page_loading: true)} phx-target={@target} phx-value-data-id={row.id}>
                 <span :if={row.expanded}>^</span>
                 <span :if={not row.expanded}>v</span>
               </td>
@@ -69,8 +69,8 @@ defmodule DataTable.Theme.Basic do
 
               <!-- Row buttons cell -->
               <td>
-                <%= if @static.has_row_buttons do %>
-                  <%= render_slot(@static.row_buttons_slot, row.data) %>
+                <%= if @has_row_buttons do %>
+                  <%= render_slot(@row_buttons_slot, row.data) %>
                 <% end %>
               </td>
             </tr>
@@ -79,7 +79,7 @@ defmodule DataTable.Theme.Basic do
             <!-- This row contains the expanded content. -->
             <tr :if={row.expanded} class="expanded-row-content">
               <td colspan="99999">
-                <%= render_slot(@static.row_expanded_slot, row.data) %>
+                <%= render_slot(@row_expanded_slot, row.data) %>
               </td>
             </tr>
           <% end %>

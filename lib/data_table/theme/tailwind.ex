@@ -97,7 +97,7 @@ defmodule DataTable.Theme.Tailwind do
     <div>
       <.filter_header
         filters_form={@filters_form}
-        can_select={@static.can_select}
+        can_select={@can_select}
         has_selection={@has_selection}
         selection_actions={@static.selection_actions}
         target={@target}
@@ -112,21 +112,21 @@ defmodule DataTable.Theme.Tailwind do
             <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
               <table class="min-w-full divide-y divide-gray-300 bg-white">
                 <.table_header
-                  can_select={@static.can_select}
+                  can_select={@can_select}
                   header_selection={@header_selection}
                   target={@target}
-                  can_expand={@static.can_expand}
+                  can_expand={@can_expand}
                   row_expanded_slot={@row_expanded}
                   header_fields={@header_fields}
                   togglable_fields={@togglable_fields}/>
 
                 <.table_body
                   rows={@rows}
-                  can_select={@static.can_select}
+                  can_select={@can_select}
                   field_slots={@field_slots}
-                  has_row_buttons={@static.has_row_buttons}
-                  row_buttons_slot={@static.row_buttons_slot}
-                  can_expand={@static.can_expand}
+                  has_row_buttons={@has_row_buttons}
+                  row_buttons_slot={@row_buttons_slot}
+                  can_expand={@can_expand}
                   row_expanded_slot={@row_expanded}
                   target={@target}/>
 
