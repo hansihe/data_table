@@ -58,11 +58,14 @@ defmodule DataTable.Util.DataDeps do
   #  end
   # end
 
-  def assign_derive(deps, in_fields, fun) do
+  def assign_derive(deps, in_fields, tap_fields \\ [], fun) do
     if MapSet.disjoint?(deps.changed, MapSet.new(in_fields)) do
       deps
     else
-      in_assigns = Map.take(Map.merge(deps.derived, deps.socket.assigns), in_fields)
+      in_assigns =
+        Map.merge(deps.derived, deps.socket.assigns)
+        |> Map.take(tap_fields ++ in_fields)
+
       new_assigns = fun.(in_assigns)
       socket = assign(deps.socket, new_assigns)
       changed = MapSet.union(deps.changed, MapSet.new(new_assigns, fn {k, _v} -> k end))

@@ -49,16 +49,96 @@ defmodule DataTable.LiveComponent.Logic do
     # what is provided by the nav assign input.
     # If input NAV does not differ from internal state, no changes
     # will be marked, which prevents state change loops.
-    # |> compute_early_nav_phase()
+    |> compute_early_nav_phase()
     # The UI phase handles any derived data from UI interactions.
     |> compute_ui_phase()
     # The query phase performs the source query to fetch data
     # the table needs, then computes any state derived from that.
     |> compute_query_phase()
-
     # The late NAV phase is responsible for dispatching any potential
     # changed NAV state to the user provided NAV state handler.
-    # |> compute_late_nav_phase()
+    |> compute_late_nav_phase()
+  end
+
+  defp compute_early_nav_phase(data_deps) do
+    data_deps
+    # This relies on the fact that this will only be executed when
+    # `nav` actually changes.
+    # If this was executed every time, then user changes would get
+    # overridden.
+    |> DataDeps.assign_derive([:nav], [:filter_columns, :dispatched_nav], fn
+      data = %{nav: nav} when nav != nil ->
+        nav = data.nav
+
+        out = %{}
+
+        out =
+          if MapSet.member?(nav.set, :filters) do
+            changes = %{
+              "filters" =>
+                nav.filters
+                |> Enum.map(fn {field, op, value} ->
+                  %{"field" => field, "op" => op, "value" => value}
+                end)
+            }
+
+            changeset = Filters.changeset(%Filters{}, data.filter_columns, changes)
+            Map.put(out, :filters_changeset, changeset)
+          else
+            out
+          end
+
+        out =
+          if MapSet.member?(nav.set, :sort) do
+            Map.put(out, :sort, nav.sort)
+          else
+            out
+          end
+
+        out =
+          if MapSet.member?(nav.set, :page) do
+            Map.put(out, :page, nav.page)
+          else
+            out
+          end
+
+        out
+
+      _ ->
+        %{}
+    end)
+  end
+
+  defp compute_late_nav_phase(data_deps) do
+    data_deps
+    |> DataDeps.assign_derive(
+      [:filters_changeset, :sort, :page],
+      [:dispatched_nav, :handle_nav],
+      fn data ->
+        raw_filters = Ecto.Changeset.apply_changes(data.filters_changeset)
+
+        new_nav = %DataTable.NavState{
+          filters:
+            Enum.map(raw_filters.filters, fn %{field: field, op: op, value: value} ->
+              {field, op, value}
+            end),
+          sort: data.sort,
+          page: data.page
+        }
+
+        if new_nav != data.dispatched_nav do
+          if data.handle_nav do
+            data.handle_nav.(new_nav)
+          end
+
+          %{
+            dispatched_nav: new_nav
+          }
+        else
+          %{}
+        end
+      end
+    )
   end
 
   defp compute_config_phase(data_deps) do

@@ -7,6 +7,18 @@ defmodule DataTable.LiveComponent.LogicTest do
   @simple_source {DataTable.List,
                   {Enum.map(0..9, &%{id: &1, name: "Id #{&1}"}), %DataTable.List.Config{}}}
 
+  defp handle_nav(nav) do
+    send(self(), {:handle_nav, nav})
+  end
+
+  defp get_handle_nav do
+    receive do
+      {:handle_nav, nav} -> {:ok, nav}
+    after
+      0 -> :no_message
+    end
+  end
+
   def update(assigns, changes) do
     data_deps = DataDeps.new(%Phoenix.LiveView.Socket{assigns: assigns})
 
@@ -95,5 +107,26 @@ defmodule DataTable.LiveComponent.LogicTest do
 
     assert assigns.shown_fields == MapSet.new([])
     assert assigns.queried_columns == MapSet.new([:list_index])
+  end
+
+  test "correctly dispatches nav" do
+    # Passing in a `handle_nav` function results in update to nav state.
+    assigns = params(handle_nav: &handle_nav/1)
+    {:ok, nav} = get_handle_nav()
+    :no_message = get_handle_nav()
+    assert nav.filters == []
+    assert nav.page == 0
+    assert nav.sort == nil
+
+    # Setting `nav` param to the active nav state results in no update.
+    assigns = update(assigns, nav: nav)
+    :no_message = get_handle_nav()
+
+    # Setting `nav` param to a changed nav state results in update.
+    updated_nav = %{nav | page: 1}
+    assigns = update(assigns, nav: %{nav | page: 1})
+    {:ok, nav} = get_handle_nav()
+    :no_message = get_handle_nav()
+    assert nav == updated_nav
   end
 end
