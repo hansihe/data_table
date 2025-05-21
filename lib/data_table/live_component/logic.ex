@@ -1,17 +1,17 @@
 defmodule DataTable.LiveComponent.Logic do
-  @moduledoc """
-  This module contains all the business logic for the data table.
-  All of this is built on top of the `DataDeps` data structure.
+  @moduledoc false
 
-  Inputs to the `DataDeps` structure are change tracked, and any
-  derived calculations are only executed if any of its predecessors
-  are marked as changed. Notably:
-  * Inputs `assign_input` are change tracked with equality.
-  * Derived computations `assign_derive` are always marked
-    as changed when any inputs change.
-  This gives us a middle ground between calculating everything on
-  every small change vs spending unneeded cycles doing equality checks.
-  """
+  # This module contains all the business logic for the data table.
+  # All of this is built on top of the `DataDeps` data structure.
+
+  # Inputs to the `DataDeps` structure are change tracked, and any
+  # derived calculations are only executed if any of its predecessors
+  # are marked as changed. Notably:
+  # * Inputs `assign_input` are change tracked with equality.
+  # * Derived computations `assign_derive` are always marked
+  #   as changed when any inputs change.
+  # This gives us a middle ground between calculating everything on
+  # every small change vs spending unneeded cycles doing equality checks.
 
   # For `to_form`
   use Phoenix.LiveComponent
@@ -548,22 +548,4 @@ defmodule DataTable.LiveComponent.Logic do
     id = Map.fetch!(socket.assigns.field_id_by_str_id, str_id)
     Map.fetch!(socket.assigns.field_by_id, id)
   end
-
-  # # NAV change updates:
-  # # 1. nav A, internal A - No dispatch, No update
-  # # 2. nav A, internal B - Dispatch, Update
-  # # 3. nav nil, internal A - Dispatch, No update
-
-  # # Only dispatch if: nav != nil and nav != dispatched
-  # #   On dispatch, set dispatched_nav
-
-  # # Update nav state if present
-  # new_nav = assigns[:nav]
-  # dispatched_nav = socket.assigns.dispatched_nav
-  # # Nav state is only updated if it has changed since the last dispatch.
-  # # This prevents a secondary DOM update after the nav state makes the round
-  # # trip to the query string.
-  # if new_nav != nil and new_nav != dispatched_nav do
-  #   nil
-  # end
 end
