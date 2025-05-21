@@ -545,8 +545,8 @@ defmodule DataTable.LiveComponent.Logic do
   defp id_to_string(id) when is_binary(id), do: id
 
   def field_by_str_id(str_id, socket) do
-    id = Map.fetch!(socket.assigns.static.field_id_by_str_id, str_id)
-    Map.fetch!(socket.assigns.static.field_by_id, id)
+    id = Map.fetch!(socket.assigns.field_id_by_str_id, str_id)
+    Map.fetch!(socket.assigns.field_by_id, id)
   end
 
   # # NAV change updates:

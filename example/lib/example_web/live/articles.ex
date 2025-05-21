@@ -32,7 +32,7 @@ defmodule ExampleWeb.ArticlesLive do
     query =
       DataTable.Ecto.Query.from(
         article in Example.Model.Article,
-        columns: %{
+        fields: %{
           id: article.id,
           title: article.title,
           body: article.body
@@ -44,31 +44,32 @@ defmodule ExampleWeb.ArticlesLive do
         }
       )
 
-    socket = assign(socket, %{
-      source_query: query
-    })
+    socket =
+      assign(socket, %{
+        source_query: query
+      })
 
     {:ok, socket}
   end
 
-  #handle_nav={&send(self(), {:nav, &1})}
-  #nav={@nav}>
+  # handle_nav={&send(self(), {:nav, &1})}
+  # nav={@nav}>
 
-  #def handle_info({:nav, nav}, socket) do
+  # def handle_info({:nav, nav}, socket) do
   #  query = DataTable.NavState.encode_query_string(nav)
   #  socket =
   #    socket
   #    |> push_patch(to: "/?" <> query, replace: true)
   #    |> assign(:nav, nav)
   #  {:noreply, socket}
-  #end
+  # end
 
-  #def handle_params(_params, uri, socket) do
+  # def handle_params(_params, uri, socket) do
   #  %URI{query: query} = URI.parse(uri)
   #  IO.inspect(query)
   #  nav = DataTable.NavState.decode_query_string(query)
   #  IO.inspect(nav)
   #  socket = assign(socket, :nav, nav)
   #  {:noreply, socket}
-  #end
+  # end
 end

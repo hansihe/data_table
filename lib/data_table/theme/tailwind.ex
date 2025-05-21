@@ -13,12 +13,15 @@ defmodule DataTable.Theme.Tailwind do
 
   # If using this module as the base for your own theme, you may wish to use the
   # upstream libraries instead of these vendored versions.
-  alias DataTable.Theme.Tailwind.Heroicons # From `:heroicons` Heroicons
-  alias DataTable.Theme.Tailwind.Dropdown # From `:petal_components` PetalComponents.Dropdown`
+  # From `:heroicons` Heroicons
+  alias DataTable.Theme.Tailwind.Heroicons
+  # From `:petal_components` PetalComponents.Dropdown`
+  alias DataTable.Theme.Tailwind.Dropdown
 
-  attr :size, :atom, default: :small, values: [:small, :medium, :large]
-  slot :icon
-  slot :inner_block, required: true
+  attr(:size, :atom, default: :small, values: [:small, :medium, :large])
+  slot(:icon)
+  slot(:inner_block, required: true)
+
   def btn_basic(assigns) do
     ~H"""
     <% classes = [
@@ -40,7 +43,8 @@ defmodule DataTable.Theme.Tailwind do
     """
   end
 
-  slot :inner_block, required: true
+  slot(:inner_block, required: true)
+
   def btn_icon(assigns) do
     ~H"""
     <div tabindex="0" class={[
@@ -55,8 +59,9 @@ defmodule DataTable.Theme.Tailwind do
     """
   end
 
-  attr :field, Phoenix.HTML.FormField
-  attr :options, :any
+  attr(:field, Phoenix.HTML.FormField)
+  attr(:options, :any)
+
   def select(assigns) do
     ~H"""
     <select
@@ -74,7 +79,8 @@ defmodule DataTable.Theme.Tailwind do
     """
   end
 
-  attr :field, Phoenix.HTML.FormField
+  attr(:field, Phoenix.HTML.FormField)
+
   def text_input(assigns) do
     ~H"""
     <% has_error = @field.errors != [] %>
@@ -99,12 +105,12 @@ defmodule DataTable.Theme.Tailwind do
         filters_form={@filters_form}
         can_select={@can_select}
         has_selection={@has_selection}
-        selection_actions={@static.selection_actions}
+        selection_actions={@selection_actions}
         target={@target}
         top_right_slot={@top_right}
-        filter_column_order={@static.filter_column_order}
-        filter_columns={@static.filter_columns}
-        filters_fields={@static.filters_fields}/>
+        filter_column_order={@filter_column_order}
+        filter_columns={@filter_columns}
+        filters_fields={@filters_fields}/>
 
       <div class="flex flex-col">
         <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -348,8 +354,8 @@ defmodule DataTable.Theme.Tailwind do
     """
   end
 
-  #defp op_options_and_default(_spec, nil), do: {[], ""}
-  #defp op_options_and_default(spec, field_value) do
+  # defp op_options_and_default(_spec, nil), do: {[], ""}
+  # defp op_options_and_default(spec, field_value) do
   #  atom_field = String.to_existing_atom(field_value)
   #  filter_data = Enum.find(spec.filterable_columns, & &1.col_id == atom_field)
 
@@ -367,22 +373,22 @@ defmodule DataTable.Theme.Tailwind do
 
   #    {kvs, default_selected}
   #  end
-  #end
+  # end
 
+  # attr :form, :any
+  # attr :target, :any
+  # attr :spec, :any
 
-  #attr :form, :any
-  #attr :target, :any
-  #attr :spec, :any
+  # attr :filters_fields, :any
+  # attr :filterable_fields, :any
 
-  #attr :filters_fields, :any
-  #attr :filterable_fields, :any
+  attr(:target, :any)
+  attr(:filters_form, :any)
+  attr(:filter_column_order, :any)
+  attr(:filter_columns, :any)
+  attr(:filters_fields, :any)
+  attr(:update_filters, :any)
 
-  attr :target, :any
-  attr :filters_form, :any
-  attr :filter_column_order, :any
-  attr :filter_columns, :any
-  attr :filters_fields, :any
-  attr :update_filters, :any
   def filters_form(assigns) do
     ~H"""
     <.form for={@filters_form} phx-target={@target} phx-change="filters-change" phx-submit="filters-change" class="py-3 sm:flex items-start">
@@ -445,5 +451,4 @@ defmodule DataTable.Theme.Tailwind do
     </.form>
     """
   end
-
 end

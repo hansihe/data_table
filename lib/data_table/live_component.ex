@@ -181,12 +181,11 @@ defmodule DataTable.LiveComponent do
   end
 
   def handle_event("filters-change", params, socket) do
-    static = socket.assigns.static
     filters_changes = params["filters"] || %{}
 
     changeset =
       %Filters{}
-      |> Filters.changeset(static.filter_columns, filters_changes)
+      |> Filters.changeset(socket.assigns.filter_columns, filters_changes)
 
     socket =
       DataDeps.new(socket)
@@ -217,7 +216,7 @@ defmodule DataTable.LiveComponent do
   end
 
   defp field_by_str_id(str_id, socket) do
-    id = Map.fetch!(socket.assigns.static.field_id_by_str_id, str_id)
-    Map.fetch!(socket.assigns.static.field_by_id, id)
+    id = Map.fetch!(socket.assigns.field_id_by_str_id, str_id)
+    Map.fetch!(socket.assigns.field_by_id, id)
   end
 end
